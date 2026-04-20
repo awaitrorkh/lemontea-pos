@@ -141,3 +141,85 @@
                 sales.push({
                     time: timeStr,
                     n: item.n,
+                    p: item.p
+                });
+            });
+
+            saveSales();
+            updateStats();
+            alert("結帳成功！");
+            cart = [];
+            updateCartUI();
+            document.getElementById("cart-detail").style.display = 'none';
+        }
+
+        // --- 業績統計與匯出 ---
+        function updateStats() {
+            let sum = 0;
+            sales.forEach(s => sum += s.p);
+            document.getElementById("today-count").innerText = sales.length;
+            document.getElementById("today-sum").innerText = "$" + sum;
+        }
+
+        function exportCSV() {
+            if(sales.length === 0) return alert("目前沒有銷售資料可匯出");
+            let csvContent = "\uFEFF時間,品項,金額\n"; // 加入 BOM 確保 Excel 打開不亂碼
+            sales.forEach(s => {
+                csvContent += `${s.time},${s.n},${s.p}\n`;
+            });
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `小森檸銷售報表_${new Date().toLocaleDateString()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // --- 管理介面 ---
+        function openAdmin() {
+            if(prompt("請輸入管理密碼") === "8888") {
+                document.getElementById("admin-screen").style.display = "block";
+                renderEditor();
+            }
+        }
+
+        function closeAdmin() {
+            document.getElementById("admin-screen").style.display = "none";
+            renderPOS();
+        }
+
+        function renderEditor() {
+            const box = document.getElementById("editor");
+            let h = "";
+            inv.forEach((c, ci) => {
+                h += `<div class="admin-item">
+                    <div style="display:flex;gap:5px;margin-bottom:10px;">
+                        <input type="text" value="${c.cat}" onchange="inv[${ci}].cat=this.value;saveInv()" style="flex:1;font-weight:bold;border-color:var(--p);">
+                        <button onclick="if(confirm('刪除整類？')){inv.splice(${ci},1);saveInv();renderEditor();}" style="color:red;background:none;border:none;">刪除分類</button>
+                    </div>`;
+                (c.items || []).forEach((it, ii) => {
+                    h += `<div style="display:flex;gap:5px;margin-bottom:5px;">
+                        <input type="text" value="${it.n}" style="flex:2;" onchange="inv[${ci}].items[${ii}].n=this.value;saveInv()">
+                        <input type="number" value="${it.p}" style="flex:1;" onchange="inv[${ci}].items[${ii}].p=Number(this.value);saveInv()">
+                        <button onclick="inv[${ci}].items.splice(${ii},1);saveInv();renderEditor()" style="border:none;background:none;">✕</button>
+                    </div>`;
+                });
+                h += `<button onclick="inv[${ci}].items.push({id:Date.now(), n:'新飲品', p:50});saveInv();renderEditor()" style="width:100%;margin-top:10px;border:1px dashed #999;background:none;padding:5px;">＋新增品項</button></div>`;
+            });
+            box.innerHTML = h;
+        }
+
+        function addCat() {
+            const n = prompt("輸入分類名稱 (如: 泰奶系列)");
+            if(n) { inv.push({cat: n, items: []}); saveInv(); renderEditor(); }
+        }
+
+        function saveInv() { localStorage.setItem('myPOS_inv', JSON.stringify(inv)); }
+        function saveSales() { localStorage.setItem('myPOS_sales', JSON.stringify(sales)); }
+    </script>
+</body>
+</html>
