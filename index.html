@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸＆泰奶 POS 系統</title>
+    <title>小森檸 POS 系統</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -87,7 +87,7 @@
     </div>
 
     <script>
-        // --- 初始化配置 ---
+        // 確保函數在全域空間
         const firebaseConfig = {
             apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
             authDomain: "lemontea-ad44d.firebaseapp.com",
@@ -104,7 +104,6 @@
         let inv = [], cart = [], currentPay = '現金';
         window.currentStore = "";
 
-        // --- 1. 登入邏輯 ---
         function handleLogin() {
             const email = document.getElementById('login-email').value;
             const pass = document.getElementById('login-pass').value;
@@ -117,8 +116,8 @@
             }).catch(e => alert("登入失敗：" + e.message));
         }
 
-        // --- 2. 資料流 ---
         function loadData() {
+            if(!window.currentStore) return;
             db.ref(`stores/${window.currentStore}/inventory`).on('value', snap => {
                 inv = snap.val() || [];
                 initUI();
@@ -127,6 +126,7 @@
 
         function initUI() {
             const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
+            if(!area || !nav) return;
             area.innerHTML = ''; nav.innerHTML = '';
             inv.forEach((cat, idx) => {
                 nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
@@ -143,7 +143,6 @@
             if(document.getElementById('admin-panel').style.display === 'flex') renderAdminTable();
         }
 
-        // --- 3. 結帳邏輯 ---
         function addCart(id) {
             inv.forEach(c => (c.items || []).forEach(i => {
                 if(i.id === id) { cart.push({...i}); renderCart(); }
@@ -151,14 +150,16 @@
         }
 
         function renderCart() {
-            document.getElementById('cart-list').innerHTML = cart.map((it, i) => `
-                <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b></div>`).join('');
+            const list = document.getElementById('cart-list');
+            if(!list) return;
+            list.innerHTML = cart.map((it, i) => `
+                <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b>
+                <span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer;">✕</span></div>`).join('');
             document.getElementById('final-total').innerText = cart.reduce((a,b)=>a+b.p, 0);
         }
 
         function submitOrder() {
             if(!cart.length || !window.currentStore) return;
-            const path = `stores/${window.currentStore}`;
             const order = { 
                 d: new Date().toLocaleDateString(), 
                 t: new Date().toLocaleTimeString(), 
@@ -166,13 +167,11 @@
                 items: [...cart], 
                 pay: currentPay 
             };
-            
             cart.forEach(item => {
                 inv.forEach(c => (c.items || []).forEach(i => { if(i.id === item.id) i.s--; }));
             });
-
-            db.ref(`${path}/orders`).push(order);
-            db.ref(`${path}/inventory`).set(inv);
+            db.ref(`stores/${window.currentStore}/orders`).push(order);
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
             alert("結帳成功");
             cart = []; renderCart();
         }
@@ -183,7 +182,6 @@
             document.getElementById('btn-elec').className = m === '電支' ? 'pay-btn active' : 'pay-btn';
         }
 
-        // --- 4. 管理後台 ---
         function toggleAdmin() {
             const p = document.getElementById('admin-panel');
             p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
