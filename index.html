@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 業績修正版</title>
+    <title>小森檸 POS - 系統穩定版</title>
     
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
+
     <style>
         :root { --p: #27ae60; --s: #f1c40f; }
         body { font-family: sans-serif; margin: 0; background: #f4f4f9; display: flex; height: 100vh; overflow: hidden; }
@@ -12,24 +17,23 @@
         #navbar { display: flex; background: #fff; padding: 10px; gap: 10px; overflow-x: auto; border-bottom: 2px solid var(--p); min-height: 50px; }
         .nav-btn { padding: 8px 15px; background: #eee; border-radius: 20px; white-space: nowrap; cursor: pointer; }
         #item-area { flex: 1; overflow-y: auto; padding: 15px; }
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
         .p-btn { background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; cursor: pointer; }
         .side { width: 300px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
-        .cart-header { padding: 15px; background: #2c3e50; color: white; }
+        .cart-header { padding: 15px; background: #2c3e50; color: white; font-weight: bold; }
         #cart-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .checkout-box { padding: 15px; background: #eee; }
+        .checkout-box { padding: 15px; background: #eee; border-top: 1px solid #ccc; }
         .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; font-size: 1.2em; border-radius: 8px; cursor: pointer; }
         
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f4f9; z-index: 99999; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 85%; max-width: 300px; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 15px; }
+        .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 280px; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; }
         
         #admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 88888; display: none; flex-direction: column; }
-        .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; }
+        .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; align-items: center; }
         .stat-card { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; }
-        .excel-btn { background: #27ae60; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold; margin-left: 10px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -39,7 +43,7 @@
             <h2 style="color:var(--p); margin-top:0;">小森檸 POS</h2>
             <input type="email" id="login-email" placeholder="帳號 (Email)">
             <input type="password" id="login-pass" placeholder="密碼">
-            <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer;">進入系統</button>
+            <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer; font-size:16px;">進入系統</button>
             <p id="login-msg" style="color:red; margin-top:10px; font-size:14px;"></p>
         </div>
     </div>
@@ -53,97 +57,23 @@
         <div class="cart-header">目前點餐</div>
         <div id="cart-list"></div>
         <div class="checkout-box">
-            <div style="font-size: 1.5em; font-weight: bold; margin-bottom: 10px;">總計 $<span id="final-total">0</span></div>
+            <div style="font-size: 1.4em; font-weight: bold; margin-bottom: 10px; display: flex; justify-content: space-between;">
+                <span>總計</span><span>$<span id="final-total">0</span></span>
+            </div>
             <button class="btn-submit" onclick="submitOrder()">確認結帳</button>
-            <button onclick="checkAdminPass()" style="margin-top:10px; width:100%; padding:8px; border:1px solid #ccc; background:#fff; cursor:pointer; border-radius:5px;">⚙️ 管理後台</button>
+            <button onclick="checkAdminPass()" style="margin-top:10px; width:100%; padding:8px; border:1px solid #ccc; background:#fff; cursor:pointer; border-radius:5px; color: #666;">⚙️ 管理後台</button>
         </div>
     </div>
 
     <div id="admin-panel">
         <div class="admin-header">
-            <b>管理後台</b>
-            <button onclick="toggleAdmin()">關閉</button>
+            <b>管理後台與報表</b>
+            <button onclick="toggleAdmin()" style="padding: 5px 10px;">關閉</button>
         </div>
         <div style="padding:20px; flex:1; overflow-y:auto;">
-            <h3>📊 業績查詢</h3>
+            <h3>📊 業績報表</h3>
             <div class="stat-card">
-                日期：<input type="date" id="date-start"> 到 <input type="date" id="date-end">
-                <button onclick="calculateSales()" style="padding:8px 15px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">查詢</button>
-                <button onclick="exportExcel()" class="excel-btn">📥 導出 Excel</button>
-                <div style="margin-top:15px; display:flex; gap:30px;">
-                    <div style="background:#fff; padding:10px; border-radius:5px; flex:1;">銷售金額：<b id="range-total" style="color:var(--p); font-size:1.2em;">$0</b></div>
-                    <div style="background:#fff; padding:10px; border-radius:5px; flex:1;">銷售杯數：<b id="range-count" style="color:var(--p); font-size:1.2em;">0 杯</b></div>
+                <div>
+                    從 <input type="date" id="date-start" style="width:auto; display:inline;"> 
+                    至 <input type="date" id="date-end" style="width:auto; display:inline;">
                 </div>
-            </div>
-            <h3>📋 品項管理</h3>
-            <button onclick="addNewCat()" style="margin-bottom:10px; padding:8px 15px; background:#2980b9; color:white; border:none; border-radius:4px;">＋新增分類</button>
-            <table>
-                <thead><tr style="background:#eee"><th>品名</th><th>售價</th><th>庫存</th><th>操作</th></tr></thead>
-                <tbody id="admin-tbody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
-            authDomain: "lemontea-ad44d.firebaseapp.com",
-            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
-            projectId: "lemontea-ad44d",
-            storageBucket: "lemontea-ad44d.appspot.com",
-            messagingSenderId: "84807565645",
-            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
-        };
-
-        let db, auth, inv = [], cart = [], orders = {};
-        window.currentStore = "";
-
-        // 初始化
-        window.onload = function() {
-            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-            db = firebase.database();
-            auth = firebase.auth();
-        };
-
-        // 日期轉換工具：確保變成 YYYY-MM-DD
-        function toDateString(d) {
-            const date = new Date(d);
-            if (isNaN(date.getTime())) return "";
-            return date.toISOString().split('T')[0];
-        }
-
-        function handleLogin() {
-            const email = document.getElementById('login-email').value.trim();
-            const pass = document.getElementById('login-pass').value.trim();
-            auth.signInWithEmailAndPassword(email, pass).then(u => {
-                window.currentStore = email.split('@')[0].replace(/\./g, '_');
-                document.getElementById('login-overlay').style.display = 'none';
-                loadData();
-            }).catch(e => { alert("登入失敗"); });
-        }
-
-        function loadData() {
-            db.ref(`stores/${window.currentStore}/inventory`).on('value', snap => {
-                inv = snap.val() || [];
-                initUI();
-            });
-            db.ref(`stores/${window.currentStore}/orders`).on('value', snap => {
-                orders = snap.val() || {};
-                // 如果後台開著，自動更新統計
-                if(document.getElementById('admin-panel').style.display === 'flex') calculateSales();
-            });
-        }
-
-        function initUI() {
-            const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
-            area.innerHTML = ''; nav.innerHTML = '';
-            inv.forEach((cat, idx) => {
-                nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
-                let grid = `<div id="c${idx}" style="font-weight:bold; margin:15px 0 10px 0; border-left:4px solid var(--p); padding-left:10px;">${cat.cat}</div><div class="product-grid">`;
-                (cat.items || []).forEach(it => {
-                    grid += `<div class="p-btn" onclick="addCart('${it.id}')"><div>${it.n}</div><div style="color:var(--p);
