@@ -12,8 +12,6 @@
     <style>
         :root { --p: #27ae60; --s: #f1c40f; }
         body { font-family: sans-serif; margin: 0; background: #f4f4f9; display: flex; height: 100vh; overflow: hidden; }
-        
-        /* 左側導覽與商品區 */
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #navbar { display: flex; background: #fff; padding: 10px; gap: 10px; overflow-x: auto; border-bottom: 2px solid var(--p); }
         .nav-btn { padding: 8px 15px; background: #eee; border-radius: 20px; white-space: nowrap; cursor: pointer; }
@@ -24,8 +22,6 @@
         .p-price { color: var(--p); }
         .p-stock { font-size: 0.8em; color: #888; }
         .cat-title { font-weight: bold; padding: 5px 0; border-left: 4px solid var(--p); padding-left: 10px; margin: 10px 0; }
-
-        /* 右側結帳區 */
         .side { width: 320px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
         .cart-header { padding: 15px; background: #2c3e50; color: white; font-weight: bold; }
         #cart-list { flex: 1; overflow-y: auto; padding: 10px; }
@@ -36,13 +32,9 @@
         .pay-btn { flex: 1; padding: 10px; text-align: center; background: #ddd; border-radius: 5px; cursor: pointer; }
         .pay-btn.active { background: var(--p); color: white; }
         .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; font-size: 1.2em; border-radius: 8px; cursor: pointer; }
-
-        /* 登入遮罩 */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee; }
         input { padding: 12px; width: 250px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
-
-        /* 管理面板 */
         #admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 999; display: none; flex-direction: column; }
         .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; }
         table { width: 100%; border-collapse: collapse; }
@@ -76,183 +68,3 @@
             </div>
             <button class="btn-submit" onclick="submitOrder()">確認結帳</button>
             <button onclick="toggleAdmin()" style="margin-top:10px; width:100%; border:none; background:none; color:#888; cursor:pointer;">⚙️ 管理後台</button>
-        </div>
-    </div>
-
-    <div id="admin-panel">
-        <div class="admin-header">
-            <span>庫存管理</span>
-            <button onclick="toggleAdmin()">關閉</button>
-        </div>
-        <div style="flex:1; overflow-y:auto;">
-            <table>
-                <thead>
-                    <tr><th>類別</th><th>品名</th><th>成本</th><th>售價</th><th>庫存</th><th>操作</th></tr>
-                </thead>
-                <tbody id="admin-tbody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
-            authDomain: "lemontea-ad44d.firebaseapp.com",
-            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
-            projectId: "lemontea-ad44d",
-            storageBucket: "lemontea-ad44d.appspot.com",
-            messagingSenderId: "84807565645",
-            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
-        };
-
-        let db, inv = [], cart = [], currentPay = '現金';
-        window.currentStore = "";
-
-        function initApp() {
-            if (typeof firebase !== 'undefined') {
-                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                console.log("✅ Firebase 連結成功");
-            }
-        }
-        initApp();
-
-        function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-pass').value;
-            if(!email || !pass) return alert("請輸入帳密");
-
-            firebase.auth().signInWithEmailAndPassword(email, pass).then(u => {
-                window.currentStore = email.split('@')[0];
-                document.getElementById('login-overlay').style.display = 'none';
-                loadData();
-            }).catch(e => alert("登入失敗"));
-        }
-
-        function loadData() {
-            db.ref(`stores/${window.currentStore}/inventory`).on('value', snap => {
-                inv = snap.val() || [];
-                initUI();
-            });
-        }
-
-        function initUI() {
-            const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
-            area.innerHTML = ''; nav.innerHTML = '';
-            inv.forEach((cat, idx) => {
-                nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
-                let grid = `<div class="cat-title" id="c${idx}">${cat.cat}</div><div class="product-grid">`;
-                (cat.items || []).forEach(it => {
-                    grid += `<div class="p-btn" onclick="addCart('${it.id}')">
-                        <div class="p-name">${it.n}</div>
-                        <div class="p-price">$${it.p}</div>
-                        <div class="p-stock">存:${it.s}</div>
-                    </div>`;
-                });
-                area.innerHTML += grid + '</div>';
-            });
-            if(document.getElementById('admin-panel').style.display === 'flex') renderAdminTable();
-        }
-
-        function addCart(id) {
-            inv.forEach(c => (c.items || []).forEach(i => {
-                if(i.id === id) { cart.push({...i}); renderCart(); }
-            }));
-        }
-
-        function renderCart() {
-            document.getElementById('cart-list').innerHTML = cart.map((it, i) => `
-                <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b></div>`).join('');
-            document.getElementById('final-total').innerText = cart.reduce((a,b)=>a+b.p, 0);
-        }
-
-        function submitOrder() {
-            if(!cart.length) return;
-            const path = `stores/${window.currentStore}`;
-            const order = { d: new Date().toLocaleDateString(), t: new Date().toLocaleTimeString(), total: Number(document.getElementById('final-total').innerText), items: cart, pay: currentPay };
-            
-            cart.forEach(item => {
-                inv.forEach(c => (c.items || []).forEach(i => {
-                    function submitOrder() {
-            if(!cart.length || !window.currentStore) return;
-            const path = `stores/${window.currentStore}`;
-            const total = Number(document.getElementById('final-total').innerText);
-            
-            const order = { 
-                d: new Date().toLocaleDateString('zh-TW'), 
-                t: new Date().toLocaleTimeString('zh-TW', {hour12:false}), 
-                total: total, 
-                items: [...cart], 
-                pay: currentPay 
-            };
-            
-            // 扣除庫存邏輯
-            cart.forEach(item => {
-                inv.forEach(c => (c.items || []).forEach(i => { 
-                    if(i.id === item.id) i.s = (Number(i.s) || 0) - 1; 
-                }));
-            });
-
-            // 寫入資料庫
-            db.ref(`${path}/orders`).push(order);
-            db.ref(`${path}/inventory`).set(inv);
-            
-            alert("結帳成功！");
-            cart = []; 
-            renderCart();
-            initUI();
-        }
-
-        function setPay(m) {
-            currentPay = m;
-            document.getElementById('btn-cash').className = m === '現金' ? 'pay-btn active' : 'pay-btn';
-            document.getElementById('btn-elec').className = m === '電支' ? 'pay-btn active' : 'pay-btn';
-        }
-
-        function toggleAdmin() {
-            const p = document.getElementById('admin-panel');
-            p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
-            if(p.style.display === 'flex') renderAdminTable();
-        }
-
-        function renderAdminTable() {
-            let h = '';
-            inv.forEach((cat, ci) => {
-                h += `<tr style="background:#f9f9f9"><td colspan="6" style="text-align:left; padding:10px;"><b>📂 ${cat.cat}</b></td></tr>`;
-                (cat.items || []).forEach((it, ii) => {
-                    h += `<tr>
-                        <td>-</td>
-                        <td>${it.n || ''}</td>
-                        <td><input type="number" value="${it.c || 0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px"></td>
-                        <td><input type="number" value="${it.p || 0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px"></td>
-                        <td><input type="number" value="${it.s || 0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px"></td>
-                        <td><span onclick="delP(${ci},${ii})" style="color:red; cursor:pointer">✕</span></td>
-                    </tr>`;
-                });
-            });
-            document.getElementById('admin-tbody').innerHTML = h;
-        }
-
-        function editItem(ci, ii, k, v) {
-            if (k === 'c' || k === 'p' || k === 's') {
-                inv[ci].items[ii][k] = Number(v) || 0;
-            } else {
-                inv[ci].items[ii][k] = v;
-            }
-            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
-        }
-        
-        function delP(ci, ii) { 
-            if(confirm("確定要刪除此商品嗎？")){ 
-                inv[ci].items.splice(ii,1); 
-                db.ref(`stores/${window.currentStore}/inventory`).set(inv); 
-            } 
-        }
-
-        // 初始化執行一次
-        window.onload = function() {
-            initApp();
-        };
-    </script>
-</body>
-</html>
