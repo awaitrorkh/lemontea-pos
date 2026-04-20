@@ -1,7 +1,8 @@
-<script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+
+<script>
     // 1. Firebase 配置
     const firebaseConfig = {
         apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
@@ -12,6 +13,125 @@
         messagingSenderId: "84807565645",
         appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
     };
+
+    // 2. 全域變數 (只定義這一次)
+    let db;
+    window.currentStore = ""; 
+    let inv = []; 
+    let orders = [];
+    let cart = []; 
+    let currentPay = '現金';
+
+    const defaultInv = [
+        { cat: "🧸 招牌玩偶", items: [{id: "A01", n: "經典小熊", c: 100, p: 250, s: 10}] },
+        { cat: "☕ 生活雜貨", items: [{id: "B01", n: "手作馬克杯", c: 50, p: 150, s: 20}] }
+    ];
+
+    // 3. 初始化 Firebase (加上安全偵測)
+    function initApp() {
+        try {
+            if (typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                db = firebase.database();
+                console.log("Firebase 連結成功");
+            } else {
+                console.error("Firebase SDK 未載入，請檢查網路或載入路徑");
+            }
+        } catch(e) { 
+            console.error("Firebase 初始化失敗", e); 
+        }
+    }
+    
+    initApp();
+
+    // 4. 登入處理
+    function handleLogin() {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+
+        if(!email || !pass) return alert("請輸入帳號密碼");
+
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+            .then((userCredential) => {
+                // 取得 @ 前面的名稱作為店號 (例如 fengjia)
+                window.currentStore = email.split('@')[0];
+                document.getElementById('login-overlay').style.display = 'none';
+                alert("店鋪登入成功：" + window.currentStore);
+                loadData(); 
+            })
+            .catch((error) => {
+                alert("登入失敗：" + error.message);
+            });
+    }
+
+    // 5. 資料讀取 (店鋪分流版)
+    function loadData() {
+        if(!window.currentStore || !db) return; 
+        const storePath = `stores/${window.currentStore}`; 
+
+        // 讀取該店的庫存
+        db.ref(`${storePath}/inventory`).on('value', snap => {
+            inv = snap.val() || defaultInv;
+            initUI();
+        });
+
+        // 讀取該店的訂單
+        db.ref(`${storePath}/orders`).on('value', snap => {
+            const data = snap.val();
+            orders = data ? Object.keys(data).map(k => ({...data[k], firebaseKey: k})) : [];
+            orders.sort((a,b) => (b.d+b.t).localeCompare(a.d+a.t));
+            updateLog(); 
+            renderStatTable();
+        });
+    }
+
+    // 6. 同步與寫入
+    function syncToDB() {
+        if(db && window.currentStore) {
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv).catch(e => console.log("雲端同步失敗"));
+        }
+    }
+
+    function submitOrder() {
+        if(!cart.length || !window.currentStore) return;
+        const total = Number(document.getElementById('final-total').innerText);
+        const backdateMode = document.getElementById('backdate-mode').checked;
+        const manualDate = document.getElementById('manual-date').value;
+        const dateObj = (backdateMode && manualDate) ? new Date(manualDate) : new Date();
+        
+        const orderData = { 
+            t: new Date().toLocaleTimeString('zh-TW', {hour12:false}), 
+            d: dateObj.toLocaleDateString('zh-TW'),
+            total, 
+            profit: total - cart.reduce((a,b)=>a+(b.c||0), 0), 
+            pay: currentPay, 
+            items: [...cart], 
+            discount: Number(document.getElementById('discount').value || 0), 
+            note: document.getElementById('discount-note').value 
+        };
+        
+        cart.forEach(item => { 
+            inv.forEach(c => (c.items || []).forEach(i => { if(i.id === item.id) i.s--; })); 
+        });
+        
+        const storePath = `stores/${window.currentStore}`;
+        db.ref(`${storePath}/orders`).push(orderData);
+        db.ref(`${storePath}/inventory`).set(inv);
+        
+        alert("結帳成功！");
+        cart=[]; 
+        document.getElementById('discount').value = '';
+        document.getElementById('discount-note').value = '';
+        document.getElementById('cash-in').value = '';
+        renderCart(); 
+        initUI();
+    }
+    
+    // --- UI 渲染與其他功能保持不變 ---
+    // (此處保留你原本後續的 initUI, addCart, renderCart... 等函數)
+</script>
 
     // 2. 全域變數 (只定義這一次)
     let db;
