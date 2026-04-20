@@ -18,6 +18,11 @@
     let cart = []; 
     let currentPay = '現金';
 
+    const defaultInv = [
+        { cat: "🧸 招牌玩偶", items: [{id: "A01", n: "經典小熊", c: 100, p: 250, s: 10}] },
+        { cat: "☕ 生活雜貨", items: [{id: "B01", n: "手作馬克杯", c: 50, p: 150, s: 20}] }
+    ];
+
     // 3. 初始化 Firebase
     try {
         if (!firebase.apps.length) {
