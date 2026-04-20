@@ -1,9 +1,5 @@
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-
 <script>
-    // --- A. Firebase 配置 ---
+    // --- 1. Firebase 配置 ---
     const firebaseConfig = {
         apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
         authDomain: "lemontea-ad44d.firebaseapp.com",
@@ -14,7 +10,7 @@
         appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
     };
 
-    // --- B. 全域變數 ---
+    // --- 2. 全域變數 ---
     let db;
     window.currentStore = ""; 
     let inv = []; 
@@ -22,61 +18,48 @@
     let cart = []; 
     let currentPay = '現金';
 
-    // 預設庫存 (當資料庫沒資料時顯示)
     const defaultInv = [
         { cat: "🍋 招牌系列", items: [{id: "L01", n: "經典檸檬塔", c: 40, p: 80, s: 50}] },
         { cat: "🧋 泰奶系列", items: [{id: "T01", n: "正宗泰式奶茶", c: 30, p: 65, s: 100}] }
     ];
 
-    // --- C. 初始化程式 ---
+    // --- 3. 初始化 ---
     function initApp() {
         try {
             if (typeof firebase !== 'undefined') {
-                if (!firebase.apps.length) {
-                    firebase.initializeApp(firebaseConfig);
-                }
+                if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
                 db = firebase.database();
                 console.log("✅ Firebase 連結成功");
-            } else {
-                alert("Firebase SDK 載入失敗，請檢查網路連線");
             }
-        } catch(e) {
-            console.error("初始化失敗:", e);
-        }
+        } catch(e) { console.error("初始化失敗:", e); }
     }
     initApp();
 
-    // --- D. 登入與資料流 ---
+    // --- 4. 登入與資料流 ---
     function handleLogin() {
         const email = document.getElementById('login-email').value;
         const pass = document.getElementById('login-pass').value;
-
         if(!email || !pass) return alert("請輸入帳號密碼");
 
         firebase.auth().signInWithEmailAndPassword(email, pass)
             .then((userCredential) => {
-                // 自動抓取 Email 前綴作為店名 (例如 fengjia)
                 window.currentStore = email.split('@')[0];
                 document.getElementById('login-overlay').style.display = 'none';
                 alert("店鋪登入成功：" + window.currentStore);
                 loadData(); 
             })
-            .catch((error) => {
-                alert("登入失敗：" + error.message);
-            });
+            .catch((error) => alert("登入失敗：" + error.message));
     }
 
     function loadData() {
         if(!window.currentStore || !db) return; 
         const storePath = `stores/${window.currentStore}`; 
 
-        // 讀取該店專屬庫存
         db.ref(`${storePath}/inventory`).on('value', snap => {
             inv = snap.val() || defaultInv;
             initUI();
         });
 
-        // 讀取該店專屬訂單
         db.ref(`${storePath}/orders`).on('value', snap => {
             const data = snap.val();
             orders = data ? Object.keys(data).map(k => ({...data[k], firebaseKey: k})) : [];
@@ -86,7 +69,38 @@
         });
     }
 
-    // --- E. 結帳與同步 ---
+    // --- 5. 核心邏輯：修正警告的關鍵區塊 ---
+    
+    // 修正點：確保存入資料庫前一定是數字，防止「cannot be parsed」
+    function editItem(ci, ii, k, v) { 
+        if (k === 'c' || k === 'p' || k === 's') {
+            inv[ci].items[ii][k] = Number(v) || 0; 
+        } else {
+            inv[ci].items[ii][k] = v; 
+        }
+        syncToDB(); 
+    }
+
+    // 修正點：確保渲染時 input 欄位一定有數字 0，防止警告
+    function renderAdminTable() {
+        let html = '';
+        inv.forEach((cat, ci) => {
+            html += `<tr style="background:#eee;"><td colspan="6" style="text-align:left; padding:10px;"><b>📂 ${cat.cat}</b></td></tr>`;
+            (cat.items || []).forEach((it, ii) => {
+                html += `<tr>
+                    <td>-</td>
+                    <td style="text-align:left;"><input type="text" value="${it.n || ''}" onchange="editItem(${ci},${ii},'n',this.value)" style="width:120px;"></td>
+                    <td><input type="number" value="${it.c || 0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px;"></td>
+                    <td><input type="number" value="${it.p || 0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px;"></td>
+                    <td><input type="number" value="${it.s || 0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px;"></td>
+                    <td><span onclick="delP(${ci},${ii})" style="color:red; cursor:pointer;">✕</span></td>
+                </tr>`;
+            });
+        });
+        document.getElementById('admin-tbody').innerHTML = html;
+    }
+
+    // --- 6. 其他必要功能 ---
     function syncToDB() {
         if(db && window.currentStore) {
             db.ref(`stores/${window.currentStore}/inventory`).set(inv);
@@ -96,22 +110,15 @@
     function submitOrder() {
         if(!cart.length || !window.currentStore) return;
         const total = Number(document.getElementById('final-total').innerText);
-        const backdateMode = document.getElementById('backdate-mode').checked;
-        const manualDate = document.getElementById('manual-date').value;
-        const dateObj = (backdateMode && manualDate) ? new Date(manualDate) : new Date();
-        
         const orderData = { 
             t: new Date().toLocaleTimeString('zh-TW', {hour12:false}), 
-            d: dateObj.toLocaleDateString('zh-TW'),
+            d: new Date().toLocaleDateString('zh-TW'),
             total, 
             profit: total - cart.reduce((a,b)=>a+(b.c||0), 0), 
             pay: currentPay, 
-            items: [...cart], 
-            discount: Number(document.getElementById('discount').value || 0), 
-            note: document.getElementById('discount-note').value 
+            items: [...cart]
         };
         
-        // 扣除庫存
         cart.forEach(item => { 
             inv.forEach(c => (c.items || []).forEach(i => { if(i.id === item.id) i.s--; })); 
         });
@@ -122,63 +129,40 @@
         
         alert("結帳完成！");
         cart=[]; 
-        document.getElementById('discount').value = '';
-        document.getElementById('cash-in').value = '';
         renderCart(); 
         initUI();
     }
 
-    // --- F. UI 渲染功能 ---
     function initUI() {
         const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
-        const jumpSelect = document.getElementById('admin-cat-jump');
         area.innerHTML = ''; nav.innerHTML = '';
-        if(jumpSelect) jumpSelect.innerHTML = '<option value="">快速跳轉...</option>';
-        
         inv.forEach((cat, idx) => {
             nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
-            if(jumpSelect) jumpSelect.innerHTML += `<option value="ac${idx}">${cat.cat}</option>`;
-            
             let gridHtml = `<div class="cat-title" id="c${idx}">${cat.cat}</div><div class="product-grid">`;
             (cat.items || []).forEach(it => {
                 gridHtml += `<div class="p-btn" onclick="addCart('${it.id}')">
-                    <div class="p-name">${it.id} ${it.n}</div>
+                    <div class="p-name">${it.n}</div>
                     <div class="p-price">$${it.p}</div>
                     <div class="p-stock">存:${it.s}</div>
                 </div>`;
             });
             area.innerHTML += gridHtml + '</div>';
         });
-        if(typeof updateCatSelect === 'function') updateCatSelect();
         if(document.getElementById('admin-panel').style.display === 'flex') renderAdminTable();
     }
 
     function addCart(id) {
         let target = null;
         inv.forEach(c => (c.items || []).forEach(i => { if(i.id === id) target = i; }));
-        if(target) { 
-            if(target.s <= 0) { if(!confirm("庫存不足，仍要加入？")) return; }
-            cart.push({...target}); 
-            renderCart(); 
-        }
+        if(target) { cart.push({...target}); renderCart(); }
     }
 
     function renderCart() {
         document.getElementById('cart-list').innerHTML = cart.map((it, i) => `
-            <div class="cart-item"><span>${it.id} ${it.n}</span><b>$${it.p}</b>
+            <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b>
             <span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer;">✕</span></div>`).join('');
-        calc();
-    }
-
-    function calc() {
-        const total = cart.reduce((a,b)=>a+b.p, 0) - Number(document.getElementById('discount').value || 0);
-        document.getElementById('final-total').innerText = Math.max(0, total);
-        calcChange();
-    }
-
-    function calcChange() {
-        const t = Number(document.getElementById('final-total').innerText), p = Number(document.getElementById('cash-in').value || 0);
-        document.getElementById('cash-change').innerText = p > t ? p - t : 0;
+        const total = cart.reduce((a,b)=>a+b.p, 0);
+        document.getElementById('final-total').innerText = total;
     }
 
     function setPay(m) {
@@ -187,70 +171,11 @@
         document.getElementById('btn-elec').className = m==='電支'?'pay-btn active':'pay-btn';
     }
 
-    // --- G. 歷史紀錄與管理 ---
-    function updateLog() {
-        const logArea = document.getElementById('order-log');
-        const today = new Date().toLocaleDateString('zh-TW');
-        const todayOrders = orders.filter(o => o.d === today).slice(0, 10);
-        if(todayOrders.length === 0) {
-            logArea.innerHTML = '<div style="color:#999; padding:10px; text-align:center;">今日尚無交易</div>';
-            return;
-        }
-        logArea.innerHTML = todayOrders.map(o => `
-            <div style="border-bottom:1px solid #eee; padding:5px 0; font-size:0.9em;">
-                <span style="color:#888;">[${o.t}]</span> <b>$${o.total}</b> (${o.pay})
-                <div style="color:#666; font-size:0.85em;">${o.items.map(i => i.n).join(', ')}</div>
-            </div>
-        `).join('');
+    function toggleAdmin() { 
+        const p = document.getElementById('admin-panel'); 
+        p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; 
+        if(p.style.display === 'flex') renderAdminTable(); 
     }
-
-    function renderStatTable() {
-        const stats = {};
-        orders.forEach(o => {
-            o.items.forEach(it => {
-                if(it.id === "支出") return;
-                if(!stats[it.n]) stats[it.n] = { qty: 0, amt: 0 };
-                stats[it.n].qty += 1;
-                stats[it.n].amt += it.p;
-            });
-        });
-        const sorted = Object.entries(stats).sort((a,b) => b[1].qty - a[1].qty);
-        document.getElementById('stat-tbody').innerHTML = sorted.map(([name, data]) => `
-            <tr><td style="text-align:left;">${name}</td><td>${data.qty}</td><td>$${data.amt}</td></tr>
-        `).join('');
-    }
-
-    function deleteOrder(key) {
-        if(!db || !window.currentStore) return;
-        if(confirm("確定要執行退貨並刪除此紀錄嗎？")) {
-            db.ref(`stores/${window.currentStore}/orders`).child(key).remove()
-              .then(() => alert("已刪除紀錄"))
-              .catch(e => alert("刪除失敗"));
-        }
-    }
-
-    // 面板切換
-    function toggleAdmin() { const p = document.getElementById('admin-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; if(p.style.display === 'flex') renderAdminTable(); }
-    function toggleHistory() { const p = document.getElementById('history-panel'); p.style.display = p.style.display === 'flex' ? 'none' : 'flex'; }
     
-    // 管理介面輔助
-    function editItem(ci, ii, k, v) { inv[ci].items[ii][k] = (k==='n'?v:Number(v)); syncToDB(); }
     function delP(ci, ii) { if(confirm("確定刪除商品？")){ inv[ci].items.splice(ii,1); syncToDB(); } }
-    function renderAdminTable() {
-        let html = '';
-        inv.forEach((cat, ci) => {
-            html += `<tr style="background:#eee;"><td colspan="6" style="text-align:left; padding:10px;"><b>📂 ${cat.cat}</b></td></tr>`;
-            (cat.items || []).forEach((it, ii) => {
-                html += `<tr>
-                    <td>-</td>
-                    <td style="text-align:left;"><input type="text" value="${it.n}" onchange="editItem(${ci},${ii},'n',this.value)" style="width:120px;"></td>
-                    <td><input type="number" value="${it.c}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px;"></td>
-                    <td><input type="number" value="${it.p}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px;"></td>
-                    <td><input type="number" value="${it.s}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px;"></td>
-                    <td><span onclick="delP(${ci},${ii})" style="color:red; cursor:pointer;">✕</span></td>
-                </tr>`;
-            });
-        });
-        document.getElementById('admin-tbody').innerHTML = html;
-    }
 </script>
