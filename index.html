@@ -173,3 +173,86 @@
             
             cart.forEach(item => {
                 inv.forEach(c => (c.items || []).forEach(i => {
+                    function submitOrder() {
+            if(!cart.length || !window.currentStore) return;
+            const path = `stores/${window.currentStore}`;
+            const total = Number(document.getElementById('final-total').innerText);
+            
+            const order = { 
+                d: new Date().toLocaleDateString('zh-TW'), 
+                t: new Date().toLocaleTimeString('zh-TW', {hour12:false}), 
+                total: total, 
+                items: [...cart], 
+                pay: currentPay 
+            };
+            
+            // 扣除庫存邏輯
+            cart.forEach(item => {
+                inv.forEach(c => (c.items || []).forEach(i => { 
+                    if(i.id === item.id) i.s = (Number(i.s) || 0) - 1; 
+                }));
+            });
+
+            // 寫入資料庫
+            db.ref(`${path}/orders`).push(order);
+            db.ref(`${path}/inventory`).set(inv);
+            
+            alert("結帳成功！");
+            cart = []; 
+            renderCart();
+            initUI();
+        }
+
+        function setPay(m) {
+            currentPay = m;
+            document.getElementById('btn-cash').className = m === '現金' ? 'pay-btn active' : 'pay-btn';
+            document.getElementById('btn-elec').className = m === '電支' ? 'pay-btn active' : 'pay-btn';
+        }
+
+        function toggleAdmin() {
+            const p = document.getElementById('admin-panel');
+            p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+            if(p.style.display === 'flex') renderAdminTable();
+        }
+
+        function renderAdminTable() {
+            let h = '';
+            inv.forEach((cat, ci) => {
+                h += `<tr style="background:#f9f9f9"><td colspan="6" style="text-align:left; padding:10px;"><b>📂 ${cat.cat}</b></td></tr>`;
+                (cat.items || []).forEach((it, ii) => {
+                    h += `<tr>
+                        <td>-</td>
+                        <td>${it.n || ''}</td>
+                        <td><input type="number" value="${it.c || 0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px"></td>
+                        <td><input type="number" value="${it.p || 0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px"></td>
+                        <td><input type="number" value="${it.s || 0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px"></td>
+                        <td><span onclick="delP(${ci},${ii})" style="color:red; cursor:pointer">✕</span></td>
+                    </tr>`;
+                });
+            });
+            document.getElementById('admin-tbody').innerHTML = h;
+        }
+
+        function editItem(ci, ii, k, v) {
+            if (k === 'c' || k === 'p' || k === 's') {
+                inv[ci].items[ii][k] = Number(v) || 0;
+            } else {
+                inv[ci].items[ii][k] = v;
+            }
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
+        }
+        
+        function delP(ci, ii) { 
+            if(confirm("確定要刪除此商品嗎？")){ 
+                inv[ci].items.splice(ii,1); 
+                db.ref(`stores/${window.currentStore}/inventory`).set(inv); 
+            } 
+        }
+
+        // 初始化執行一次
+        window.onload = function() {
+            initApp();
+        };
+    </script>
+</body>
+</html>
