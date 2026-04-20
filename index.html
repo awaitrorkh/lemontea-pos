@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>🧸 LITTLE NOOK POS (Pro 修正版)</title>
+  <meta charset="UTF-8">
+    <title>🧸 LITTLE NOOK POS</title>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
     <style>
         :root { --main-brown: #b0a496; --bg-cream: #fcf8f5; --accent-brown: #8c7b6c; --price-red: #d9534f; --profit-green: #6b8e23; }
         body { font-family: sans-serif; background: var(--bg-cream); margin: 0; display: flex; flex-direction: column; height: 100vh; color: #5d5246; overflow: hidden; }
@@ -50,7 +49,14 @@
     </style>
 </head>
 <body>
-
+<div id="login-overlay" style="position:fixed; inset:0; background:#fcf8f5; z-index:9999; display:flex; align-items:center; justify-content:center;">
+    <div style="background:white; width:320px; padding:30px; border-radius:20px; border:3px solid #b0a496; text-align:center; box-shadow:0 10px 30px rgba(0,0,0,0.1);">
+        <h2 style="color:#b0a496; margin-bottom:20px;">🧸 小森檸 POS 登入</h2>
+        <input type="email" id="login-email" placeholder="店鋪帳號 (Email)" style="width:100%; padding:12px; margin-bottom:10px; border-radius:10px; border:1px solid #d1c7bc; box-sizing:border-box;">
+        <input type="password" id="login-pass" placeholder="密碼" style="width:100%; padding:12px; margin-bottom:20px; border-radius:10px; border:1px solid #d1c7bc; box-sizing:border-box;">
+        <button onclick="handleLogin()" style="width:100%; padding:15px; background:#b0a496; color:white; border:none; border-radius:10px; font-weight:bold; cursor:pointer;">進入系統</button>
+    </div>
+</div>
 <header>🧸 LITTLE NOOK POS (Pro 修正版)</header>
 <div class="nav-bar">
     <div id="navbar" style="display:flex; gap:10px;"></div>
@@ -172,6 +178,79 @@
     };
 
     let db;
+    const firebaseConfig = {
+        apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
+        authDomain: "lemontea-ad44d.firebaseapp.com",
+        databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
+        projectId: "lemontea-ad44d",
+        storageBucket: "lemontea-ad44d.appspot.com",
+        messagingSenderId: "84807565645",
+        appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
+    };
+
+    let db;
+    window.currentStore = ""; // 新增：用來紀錄目前是哪間店
+
+    try {
+        firebase.initializeApp(firebaseConfig);
+        db = firebase.database();
+    } catch(e) { 
+        console.log("Firebase未配置"); 
+    }
+
+    // 新增：登入處理函數
+    function handleLogin() {
+        const email = document.getElementById('login-email').value;
+        const pass = document.getElementById('login-pass').value;
+
+        if(!email || !pass) return alert("請輸入帳號密碼");
+
+        firebase.auth().signInWithEmailAndPassword(email, pass)
+            .then((userCredential) => {
+                // 抓取 Email 前綴作為分店名 (例如 yizhong@gmail.com -> yizhong)
+                window.currentStore = email.split('@')[0];
+                document.getElementById('login-overlay').style.display = 'none';
+                alert("店鋪登入成功：" + window.currentStore);
+                loadData(); // 登入成功後才抓資料
+            })
+            .catch((error) => {
+                alert("登入失敗，請檢查帳號密碼！");
+            });
+    }
+
+    let inv = []; 
+    let orders = [];
+    let cart = []; 
+    let currentPay = '現金';
+
+    const defaultInv = [
+        { cat: "🧸 招牌玩偶", items: [{id: "A01", n: "經典小熊", c: 100, p: 250, s: 10}] }
+    ];
+
+    // 修改後的讀取資料函數 (根據店鋪路徑)
+        if(!window.currentStore) return; // 沒登入就不跑
+
+        const storePath = `stores/${window.currentStore}`; 
+
+        if(db && firebaseConfig.apiKey !== "請替換為您的API_KEY") {
+            // 讀取該店的庫存
+            db.ref(`${storePath}/inventory`).on('value', snap => {
+                inv = snap.val() || defaultInv;
+                initUI();
+            });
+            // 讀取該店的訂單
+            db.ref(`${storePath}/orders`).on('value', snap => {
+                const data = snap.val();
+                orders = data ? Object.keys(data).map(k => ({...data[k], firebaseKey: k})) : [];
+                orders.sort((a,b) => (b.d+b.t).localeCompare(a.d+a.t));
+                updateLog(); 
+                renderStatTable();
+            });
+        } else {
+            inv = defaultInv;
+            initUI();
+        }
+    }
     try {
         firebase.initializeApp(firebaseConfig);
         db = firebase.database();
