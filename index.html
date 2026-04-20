@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS 系統</title>
+    <title>小森檸＆泰奶 POS 系統</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -36,9 +36,11 @@
         .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee; }
         input { padding: 12px; width: 250px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 6px; }
         #admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 999; display: none; flex-direction: column; }
-        .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; }
+        .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; align-items: center; }
         table { width: 100%; border-collapse: collapse; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+        .add-btn { background: #27ae60; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-left: 10px; }
+        .del-btn { color: #e74c3c; cursor: pointer; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -74,12 +76,15 @@
     <div id="admin-panel">
         <div class="admin-header">
             <span>庫存管理</span>
-            <button onclick="toggleAdmin()">關閉</button>
+            <div>
+                <button class="add-btn" onclick="addNewCat()" style="background:#2980b9">＋新增全新分類</button>
+                <button onclick="toggleAdmin()" style="margin-left:20px;">關閉</button>
+            </div>
         </div>
         <div style="flex:1; overflow-y:auto;">
             <table>
                 <thead>
-                    <tr><th>類別</th><th>品名</th><th>成本</th><th>售價</th><th>庫存</th><th>操作</th></tr>
+                    <tr><th>操作</th><th>品名</th><th>成本</th><th>售價</th><th>庫存</th><th>刪除</th></tr>
                 </thead>
                 <tbody id="admin-tbody"></tbody>
             </table>
@@ -87,7 +92,6 @@
     </div>
 
     <script>
-        // 確保函數在全域空間
         const firebaseConfig = {
             apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
             authDomain: "lemontea-ad44d.firebaseapp.com",
@@ -150,11 +154,9 @@
         }
 
         function renderCart() {
-            const list = document.getElementById('cart-list');
-            if(!list) return;
-            list.innerHTML = cart.map((it, i) => `
+            document.getElementById('cart-list').innerHTML = cart.map((it, i) => `
                 <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b>
-                <span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer;">✕</span></div>`).join('');
+                <span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer; margin-left:10px;">✕</span></div>`).join('');
             document.getElementById('final-total').innerText = cart.reduce((a,b)=>a+b.p, 0);
         }
 
@@ -188,19 +190,48 @@
             if(p.style.display === 'flex') renderAdminTable();
         }
 
+        // --- 管理功能核心 ---
         function renderAdminTable() {
             let h = '';
             inv.forEach((cat, ci) => {
-                h += `<tr style="background:#f9f9f9"><td colspan="6"><b>📂 ${cat.cat}</b></td></tr>`;
+                h += `<tr style="background:#eee">
+                    <td colspan="5" style="text-align:left; padding-left:15px;">
+                        <b>📂 分類：</b><input type="text" value="${cat.cat}" onchange="editCat(${ci}, this.value)" style="width:100px; padding:4px;">
+                        <button class="add-btn" onclick="addNewItem(${ci})">＋新增商品</button>
+                    </td>
+                    <td><span class="del-btn" onclick="delCat(${ci})">刪除分類</span></td>
+                </tr>`;
                 (cat.items || []).forEach((it, ii) => {
-                    h += `<tr><td>-</td><td>${it.n}</td>
-                    <td><input type="number" value="${it.c||0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px"></td>
-                    <td><input type="number" value="${it.p||0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px"></td>
-                    <td><input type="number" value="${it.s||0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px"></td>
-                    <td><span onclick="delP(${ci},${ii})" style="color:red;cursor:pointer">✕</span></td></tr>`;
+                    h += `<tr>
+                        <td>-</td>
+                        <td><input type="text" value="${it.n}" onchange="editItem(${ci},${ii},'n',this.value)" style="width:100px"></td>
+                        <td><input type="number" value="${it.c||0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:50px"></td>
+                        <td><input type="number" value="${it.p||0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px"></td>
+                        <td><input type="number" value="${it.s||0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px"></td>
+                        <td><span class="del-btn" onclick="delP(${ci},${ii})">✕</span></td>
+                    </tr>`;
                 });
             });
             document.getElementById('admin-tbody').innerHTML = h;
+        }
+
+        function addNewCat() {
+            const name = prompt("請輸入新分類名稱 (例如: 季節限定)");
+            if(!name) return;
+            inv.push({ cat: name, items: [] });
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
+        }
+
+        function addNewItem(ci) {
+            const newItem = { id: "i"+Date.now(), n: "新飲品", c: 0, p: 40, s: 100 };
+            if(!inv[ci].items) inv[ci].items = [];
+            inv[ci].items.push(newItem);
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
+        }
+
+        function editCat(ci, val) {
+            inv[ci].cat = val;
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
         }
 
         function editItem(ci, ii, k, v) {
@@ -208,7 +239,8 @@
             db.ref(`stores/${window.currentStore}/inventory`).set(inv);
         }
         
-        function delP(ci, ii) { if(confirm("確定刪除？")){ inv[ci].items.splice(ii,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
+        function delP(ci, ii) { if(confirm("確定刪除此商品？")) { inv[ci].items.splice(ii,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
+        function delCat(ci) { if(confirm("會連同分類下的商品一起刪除，確定？")) { inv.splice(ci,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
     </script>
 </body>
 </html>
