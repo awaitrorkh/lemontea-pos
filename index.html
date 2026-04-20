@@ -133,4 +133,139 @@
                 renderPOS(); 
                 renderEditor(); 
             });
-            db.ref("
+            db.ref("stores/"+storeID+"/orders").on("value", function(s){ orders = s.val() || {}; });
+        }
+
+        function renderPOS() {
+            var tabs = document.getElementById("nav-tabs"), grid = document.getElementById("main-grid");
+            tabs.innerHTML = ""; grid.innerHTML = "";
+            inv.forEach(function(c, ci){
+                tabs.innerHTML += '<button class="nav-btn" onclick="document.getElementById(\'c-'+ci+'\').scrollIntoView()">'+c.cat+'</button>';
+                var h = '<div id="c-'+ci+'"><h3 style="border-left:5px solid var(--p); padding-left:10px;">'+c.cat+'</h3>';
+                (c.items || []).forEach(function(it){
+                    h += '<div class="p-card" onclick="addCart(\''+it.id+'\')"><b>'+it.n+'</b><br><span style="color:var(--p)">$'+it.p+'</span><br><small style="color:#999">存:'+it.s+'</small></div>';
+                });
+                grid.innerHTML += h + '</div>';
+            });
+        }
+
+        function addCart(id) {
+            inv.forEach(function(c){ (c.items || []).forEach(function(it){ if(it.id === id){ cart.push(JSON.parse(JSON.stringify(it))); renderCart(); } }); });
+        }
+
+        function renderCart() {
+            var box = document.getElementById("cart-list"), t = 0; box.innerHTML = "";
+            cart.forEach(function(it, idx){
+                t += it.p;
+                box.innerHTML += '<div style="padding:8px 0; border-bottom:1px solid #eee;">'+it.n+' <b style="float:right">$'+it.p+'</b><br><small onclick="cart.splice('+idx+',1);renderCart()" style="color:red; cursor:pointer;">移除</small></div>';
+            });
+            document.getElementById("total-val").innerText = t;
+        }
+
+        function checkout() {
+            if(!cart.length) return;
+            var now = new Date(), d = now.getFullYear()+"-"+("0"+(now.getMonth()+1)).slice(-2)+"-"+("0"+now.getDate()).slice(-2);
+            var o = { d: d, t: now.getHours()+":"+now.getMinutes(), total: parseInt(document.getElementById("total-val").innerText), items: cart.map(function(i){ return {n:i.n, p:i.p}; }) };
+            cart.forEach(function(cit){ inv.forEach(function(c){ (c.items || []).forEach(function(i){ if(i.id === cit.id) i.s--; }); }); });
+            db.ref("stores/"+storeID+"/orders").push(o).then(function(){
+                db.ref("stores/"+storeID+"/inventory").set(inv);
+                alert("結帳成功！"); cart = []; renderCart();
+            });
+        }
+
+        /* --- 管理後台核心邏輯 --- */
+        function openAdmin() {
+            if(prompt("管理密碼") === "8888") {
+                document.getElementById("admin-screen").style.display = "flex";
+                renderEditor(); // 開啟時強制重新繪製
+            }
+        }
+        function closeAdmin() { document.getElementById("admin-screen").style.display = "none"; }
+
+        function renderEditor() {
+            var container = document.getElementById("editor-container");
+            if (!container) return;
+            var html = "";
+            
+            inv.forEach(function(category, cIdx) {
+                html += '<table>';
+                html += '<thead><tr><th colspan="3" style="text-align:left; background:#2c3e50;">📁 分類：' + category.cat + '</th>';
+                html += '<th style="background:#2c3e50;"><button onclick="deleteCategory(' + cIdx + ')" class="btn-del">刪除分類</button></th></tr>';
+                html += '<tr><th style="width:40%;">飲品名稱</th><th style="width:20%;">價格</th><th style="width:20%;">庫存</th><th style="width:20%;">操作</th></tr></thead>';
+                html += '<tbody>';
+                
+                if (category.items) {
+                    category.items.forEach(function(item, iIdx) {
+                        html += '<tr>';
+                        html += '<td><input type="text" class="edit-input" value="' + item.n + '" onchange="updateData(' + cIdx + ',' + iIdx + ',\'n\',this.value)"></td>';
+                        html += '<td><input type="number" class="edit-input" value="' + item.p + '" onchange="updateData(' + cIdx + ',' + iIdx + ',\'p\',this.value)"></td>';
+                        html += '<td><input type="number" class="edit-input" value="' + item.s + '" onchange="updateData(' + cIdx + ',' + iIdx + ',\'s\',this.value)"></td>';
+                        html += '<td><button onclick="deleteItem(' + cIdx + ',' + iIdx + ')" class="btn-del">✕</button></td>';
+                        html += '</tr>';
+                    });
+                }
+                
+                html += '<tr><td colspan="4" style="background:#f9f9f9;"><button onclick="addNewItem(' + cIdx + ')" class="btn btn-add-item">＋ 在此分類新增飲品品項</button></td></tr>';
+                html += '</tbody></table>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // 修改數據並儲存
+        function updateData(cIdx, iIdx, field, value) {
+            if (field === 'p' || field === 's') value = Number(value);
+            inv[cIdx].items[iIdx][field] = value;
+            saveToFirebase();
+        }
+
+        function addNewItem(cIdx) {
+            if (!inv[cIdx].items) inv[cIdx].items = [];
+            inv[cIdx].items.push({ id: "id" + Date.now(), n: "新飲品", p: 50, s: 100 });
+            saveToFirebase();
+        }
+
+        function addCategory() {
+            var name = prompt("請輸入新分類名稱 (例如：原茶系列)");
+            if (name) {
+                inv.push({ cat: name, items: [] });
+                saveToFirebase();
+            }
+        }
+
+        function deleteItem(cIdx, iIdx) {
+            if (confirm("確定要刪除這個品項嗎？")) {
+                inv[cIdx].items.splice(iIdx, 1);
+                saveToFirebase();
+            }
+        }
+
+        function deleteCategory(cIdx) {
+            if (confirm("警告！這會刪除整個分類及該分類下的所有飲品，確定嗎？")) {
+                inv.splice(cIdx, 1);
+                saveToFirebase();
+            }
+        }
+
+        function saveToFirebase() {
+            db.ref("stores/" + storeID + "/inventory").set(inv);
+        }
+
+        // 報表
+        function fetchSales() {
+            var s = document.getElementById("date-s").value, e = document.getElementById("date-e").value, m = 0, c = 0;
+            Object.values(orders).forEach(function(o){ var d = o.d.replace(/\//g,"-"); if(d >= s && d <= e){ m += o.total; if(o.items) c += o.items.length; } });
+            document.getElementById("sale-m").innerText = "$" + m; document.getElementById("sale-c").innerText = c + " 杯";
+        }
+
+        function exportXls() {
+            var s = document.getElementById("date-s").value, e = document.getElementById("date-e").value, rows = [];
+            Object.values(orders).forEach(function(o){ var d = o.d.replace(/\//g,"-"); if(d >= s && d <= e){ rows.push({"日期":o.d, "金額":o.total, "杯數":o.items?o.items.length:0, "明細":o.items?o.items.map(function(i){return i.n}).join(","):""}); } });
+            if(!rows.length) return alert("無數據");
+            var ws = XLSX.utils.json_to_sheet(rows), wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Sales");
+            XLSX.writeFile(wb, "小森檸業績.xlsx");
+        }
+    </script>
+</body>
+</html>
