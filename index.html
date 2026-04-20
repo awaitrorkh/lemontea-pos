@@ -3,203 +3,146 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 故障排除版</title>
-    
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <title>小森檸 POS 救援版</title>
+    <style>
+        :root { --p: #27ae60; --s: #e67e22; }
+        body { font-family: sans-serif; margin: 0; background: #f4f7f6; height: 100vh; display: flex; flex-direction: column; }
+        
+        /* 頁首 */
+        header { background: var(--p); color: white; padding: 15px; text-align: center; font-weight: bold; font-size: 20px; }
+        
+        /* 選單導覽 */
+        .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
+        .nav-btn { padding: 6px 15px; background: #eee; border: none; border-radius: 20px; white-space: nowrap; }
+
+        /* 點餐區 */
+        #main-grid { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 150px; }
+        .cat-section h3 { border-left: 5px solid var(--p); padding-left: 10px; margin: 20px 0 10px; }
+        .items-flex { display: flex; flex-wrap: wrap; gap: 8px; }
+        .p-card { 
+            width: calc(33.33% - 6px); min-height: 90px; background: white; padding: 10px 5px; 
+            border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); text-align: center; 
+            display: flex; flex-direction: column; justify-content: center; box-sizing: border-box;
+        }
+        .p-card b { font-size: 13px; margin-bottom: 5px; }
+
+        /* 底部購物車 */
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: white; border-top: 1px solid #ddd; padding: 12px; box-sizing: border-box; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); }
+        .cart-info { display: flex; justify-content: space-between; margin-bottom: 10px; font-weight: bold; }
+
+        /* 管理彈窗 */
+        #admin-screen { position: fixed; inset: 0; background: white; z-index: 100; display: none; padding: 20px; overflow-y: auto; }
+        .admin-item { background: #f9f9f9; padding: 10px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #eee; }
+        input { padding: 8px; border: 1px solid #ddd; border-radius: 4px; margin: 2px; }
+    </style>
+</head>
+<body>
+
+    <header>小森檸 POS 系統</header>
+
+    <div class="nav-bar" id="nav-tabs"></div>
+
+    <div id="main-grid">
+        <div style="text-align:center; margin-top:50px; color:#999;">
+            尚未有菜單資料。<br><br>
+            請點擊下方「管理」開始新增。
+        </div>
+    </div>
+
+    <div class="cart-bar">
+        <div class="cart-info">
+            <span>已選: <span id="cart-count">0</span> 項</span>
+            <span>總計: $<span id="total-val">0</span></span>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <button onclick="checkout()" style="flex:2; background:var(--p); color:white; border:none; padding:15px; border-radius:8px; font-weight:bold; font-size:16px;">確認結帳</button>
+            <button onclick="openAdmin()" style="flex:1; background:#fff; border:1px solid #ddd; border-radius:8px;">管理</button>
+        </div>
+    </div>
+
+    <div id="admin-screen">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>菜單管理</h2>
+            <button onclick="closeAdmin()">關閉</button>
+        </div>
+        <button onclick="addCat()" style="width:100%; padding:12px; background:var(--s); color:white; border:none; border-radius:8px; margin-bottom:20px;">＋ 新增飲品分類</button>
+        <div id="editor"></div>
+    </div>
 
     <script>
-        // --- A. 核心配置 ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
-            authDomain: "lemontea-ad44d.firebaseapp.com",
-            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
-            projectId: "lemontea-ad44d",
-            storageBucket: "lemontea-ad44d.appspot.com",
-            messagingSenderId: "84807565645",
-            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
-        };
+        // 核心資料：先從本地讀取，沒有的話就空陣列
+        let inv = JSON.parse(localStorage.getItem('myPOS_inv') || '[]');
+        let cart = [];
 
-        let db, auth, storeID = "", inv = [], cart = [];
-
-        // --- B. 核心函數 (必須在 Body 載入前定義) ---
-        function doLogin() {
-            const acc = document.getElementById("acc").value;
-            const pw = document.getElementById("pw").value;
-            
-            if(!acc || !pw) {
-                alert("請輸入帳號與密碼");
-                return;
-            }
-
-            auth.signInWithEmailAndPassword(acc, pw).then(u => {
-                storeID = acc.split("@")[0].replace(/\./g, "_");
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("pos-screen").style.display = "flex";
-                startSync();
-            }).catch(e => {
-                alert("登入失敗：請確認帳號密碼是否正確");
-            });
-        }
-
-        function startSync() {
-            db.ref(`stores/${storeID}/inventory`).on("value", s => {
-                inv = s.val() || [];
-                renderPOS();
-            });
-        }
+        // 初始化渲染
+        renderPOS();
 
         function renderPOS() {
-            const tabs = document.getElementById("nav-tabs"), grid = document.getElementById("main-grid");
-            tabs.innerHTML = ""; grid.innerHTML = "";
-            if(inv.length === 0) {
-                grid.innerHTML = "<div style='padding:50px;text-align:center;color:#999;'>尚無資料，請點擊右下角「管理」新增品項</div>";
+            const tabs = document.getElementById("nav-tabs");
+            const grid = document.getElementById("main-grid");
+            tabs.innerHTML = "";
+            
+            if (inv.length === 0) {
+                grid.innerHTML = "<div style='text-align:center; padding:50px; color:#999;'>選單目前是空的，請進入管理新增分類。</div>";
                 return;
             }
+
+            grid.innerHTML = "";
             inv.forEach((c, ci) => {
                 tabs.innerHTML += `<button class="nav-btn" onclick="document.getElementById('c-${ci}').scrollIntoView()">${c.cat}</button>`;
                 let h = `<div id="c-${ci}" class="cat-section"><h3>${c.cat}</h3><div class="items-flex">`;
                 (c.items || []).forEach(it => {
-                    h += `<div class="p-card" onclick="addCart('${it.id}')"><b>${it.n}</b><span style="color:#27ae60;font-weight:bold">$${it.p}</span></div>`;
+                    h += `<div class="p-card" onclick="addCart('${it.id}')"><b>${it.n}</b><span style="color:var(--p);">$${it.p}</span></div>`;
                 });
                 grid.innerHTML += h + `</div></div>`;
             });
         }
 
         function addCart(id) {
-            inv.forEach(c => (c.items || []).forEach(it => { 
-                if(it.id === id) { cart.push({...it}); renderCart(); } 
+            inv.forEach(c => c.items.forEach(it => {
+                if(it.id === id) {
+                    cart.push({...it});
+                    updateCartUI();
+                }
             }));
         }
 
-        function renderCart() {
-            const box = document.getElementById("cart-list");
-            let t = 0; box.innerHTML = "";
-            cart.forEach((it, idx) => {
-                t += it.p;
-                box.innerHTML += `<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;"><span>${it.n}</span><span>$${it.p} <button onclick="cart.splice(${idx},1);renderCart()" style="color:red;border:none;background:none;font-weight:bold;">✕</button></span></div>`;
-            });
-            document.getElementById("total-val").innerText = t;
+        function updateCartUI() {
+            let total = 0;
+            cart.forEach(it => total += it.p);
             document.getElementById("cart-count").innerText = cart.length;
+            document.getElementById("total-val").innerText = total;
         }
 
         function checkout() {
-            if(!cart.length) return alert("購物車是空的");
-            const d = new Date().toISOString().split('T')[0];
-            db.ref(`stores/${storeID}/orders`).push({ d, total: parseInt(document.getElementById("total-val").innerText), items: cart }).then(() => {
-                alert("結帳成功"); cart = []; renderCart();
-            });
+            if(cart.length === 0) return alert("請先點餐");
+            alert("結帳成功！共 $" + document.getElementById("total-val").innerText);
+            cart = [];
+            updateCartUI();
         }
 
+        // 管理功能
         function openAdmin() {
-            if(prompt("請輸入管理密碼") === "8888") {
+            const pw = prompt("請輸入管理密碼 (預設 8888)");
+            if(pw === "8888") {
                 document.getElementById("admin-screen").style.display = "block";
                 renderEditor();
             }
         }
 
+        function closeAdmin() {
+            document.getElementById("admin-screen").style.display = "none";
+            renderPOS();
+        }
+
         function renderEditor() {
-            const box = document.getElementById("editor-container");
+            const box = document.getElementById("editor");
             let h = "";
             inv.forEach((c, ci) => {
-                h += `<div style="background:#f9f9f9;padding:15px;border-radius:10px;margin-bottom:15px;">
-                    <b>${c.cat}</b> <button onclick="inv.splice(${ci},1);save();" style="float:right;color:red;">刪除分類</button>
-                    <table style="width:100%;margin-top:10px;">`;
+                h += `<div class="admin-item">
+                    <input type="text" value="${c.cat}" onchange="inv[${ci}].cat=this.value;save()"> 
+                    <button onclick="inv.splice(${ci},1);save();renderEditor()" style="color:red">刪除分類</button>
+                    <div style="margin-top:10px;">`;
                 (c.items || []).forEach((it, ii) => {
-                    h += `<tr><td><input value="${it.n}" onchange="inv[${ci}].items[${ii}].n=this.value;save()" style="width:80%"></td>
-                          <td><input type="number" value="${it.p}" onchange="inv[${ci}].items[${ii}].p=Number(this.value);save()" style="width:50px"></td>
-                          <td><button onclick="inv[${ci}].items.splice(${ii},1);save()" style="color:red;">✕</button></td></tr>`;
-                });
-                h += `</table><button onclick="inv[${ci}].items.push({id:'i'+Date.now(),n:'新商品',p:50});save()" style="width:100%;margin-top:10px;">＋新增品項</button></div>`;
-            });
-            box.innerHTML = h;
-        }
-
-        function addCategory() { 
-            const n = prompt("分類名稱"); 
-            if(n){ inv.push({cat:n, items:[]}); save(); } 
-        }
-
-        function save() { 
-            db.ref(`stores/${storeID}/inventory`).set(inv); 
-            renderEditor(); 
-        }
-
-        // --- C. 啟動初始化 ---
-        window.onload = function() {
-            try {
-                firebase.initializeApp(firebaseConfig);
-                db = firebase.database();
-                auth = firebase.auth();
-                console.log("系統就緒");
-            } catch (err) {
-                alert("系統初始化失敗，請檢查網路連線");
-            }
-        };
-    </script>
-
-    <style>
-        body { font-family: sans-serif; margin: 0; background: #f4f7f6; height: 100vh; overflow: hidden; }
-        #login-screen { position: fixed; inset: 0; background: #fff; z-index: 9999; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        .login-card { width: 90%; max-width: 320px; text-align: center; }
-        input { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
-        .btn-main { width: 100%; padding: 14px; background: #27ae60; color: #fff; border: none; border-radius: 8px; font-weight: bold; font-size: 18px; cursor: pointer; }
-        
-        #pos-screen { display: none; flex-direction: column; height: 100vh; }
-        .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding: 12px; background: #fff; border-bottom: 1px solid #eee; }
-        .nav-btn { padding: 8px 16px; background: #f0f0f0; border: none; border-radius: 20px; white-space: nowrap; }
-        
-        #main-grid { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 150px; }
-        .items-flex { display: flex; flex-wrap: wrap; gap: 10px; }
-        .p-card { 
-            width: calc(33.33% - 7px); min-height: 95px; background: #fff; padding: 10px 5px; 
-            border-radius: 12px; box-shadow: 0 3px 6px rgba(0,0,0,0.05); text-align: center; 
-            display: flex; flex-direction: column; justify-content: center; align-items: center; box-sizing: border-box;
-        }
-        .p-card b { font-size: 13px; -webkit-line-clamp: 2; display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; margin-bottom: 5px; }
-
-        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; padding: 12px; box-sizing: border-box; }
-        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 9000; display: none; padding: 20px; overflow-y: auto; }
-    </style>
-</head>
-<body>
-
-    <div id="login-screen">
-        <div class="login-card">
-            <h1 style="color:#27ae60">小森檸 POS</h1>
-            <input type="text" id="acc" placeholder="帳號 (Email)">
-            <input type="password" id="pw" placeholder="密碼">
-            <button onclick="doLogin()" class="btn-main">登入系統</button>
-        </div>
-    </div>
-
-    <div id="pos-screen">
-        <div class="nav-bar" id="nav-tabs"></div>
-        <div id="main-grid"></div>
-        <div class="cart-bar">
-            <div id="cart-list" style="display:none; max-height:200px; overflow-y:auto; border-bottom:1px solid #eee; margin-bottom:10px;"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <div onclick="const l=document.getElementById('cart-list'); l.style.display=(l.style.display==='block'?'none':'block')" style="cursor:pointer; background:#eee; padding:5px 12px; border-radius:10px;">
-                    🛒 <b id="cart-count">0</b> 項 (清單)
-                </div>
-                <div style="font-size: 20px; font-weight: bold;">總計: $<span id="total-val">0</span></div>
-            </div>
-            <div style="display:flex; gap:10px;">
-                <button onclick="checkout()" style="flex:2; background:#27ae60; color:#fff; border:none; padding:15px; border-radius:10px; font-weight:bold;">結帳</button>
-                <button onclick="openAdmin()" style="flex:1; background:#fff; color:#666; border:1px solid #ddd; border-radius:10px;">管理</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="admin-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2>店務管理</h2>
-            <button onclick="document.getElementById('admin-screen').style.display='none'" style="padding:10px;">關閉</button>
-        </div>
-        <button onclick="addCategory()" style="width:100%; padding:15px; background:#e67e22; color:#fff; border:none; border-radius:8px; margin-bottom:20px; font-weight:bold;">＋ 新增分類</button>
-        <div id="editor-container"></div>
-    </div>
-
-</body>
-</html>
+                    h += `<div style="margin-bottom:5px;">
+                        <input type="text" value="${it.n}" style="width:100px" onchange="inv[${ci}].items[${ii}].n=this.value;save()">
