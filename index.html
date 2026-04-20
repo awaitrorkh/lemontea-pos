@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 系統穩定版</title>
+    <title>小森檸 POS - 終極修復版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -25,9 +25,10 @@
         .checkout-box { padding: 15px; background: #eee; border-top: 1px solid #ccc; }
         .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; font-size: 1.2em; border-radius: 8px; cursor: pointer; }
         
+        /* 登入視窗強制置頂 */
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f4f9; z-index: 99999; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 280px; }
-        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; }
+        .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align: center; width: 280px; border: 1px solid #ddd; }
+        input { padding: 12px; border: 1px solid #ddd; border-radius: 6px; width: 100%; box-sizing: border-box; margin-bottom: 15px; font-size: 16px; -webkit-appearance: none; }
         
         #admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 88888; display: none; flex-direction: column; }
         .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; align-items: center; }
@@ -44,7 +45,8 @@
             <input type="email" id="login-email" placeholder="帳號 (Email)">
             <input type="password" id="login-pass" placeholder="密碼">
             <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer; font-size:16px;">進入系統</button>
-            <p id="login-msg" style="color:red; margin-top:10px; font-size:14px;"></p>
+            <p id="login-msg" style="color:red; margin-top:10px; font-size:14px; min-height: 20px;"></p>
+            <button onclick="location.reload()" style="background:none; border:none; color:#999; text-decoration:underline; cursor:pointer; margin-top:10px;">畫面沒反應？點此刷新</button>
         </div>
     </div>
 
@@ -74,6 +76,33 @@
             <h3>📊 業績報表</h3>
             <div class="stat-card">
                 <div>
-                    從 <input type="date" id="date-start" style="width:auto; display:inline;"> 
-                    至 <input type="date" id="date-end" style="width:auto; display:inline;">
+                    從 <input type="date" id="date-start"> 
+                    至 <input type="date" id="date-end">
                 </div>
+                <div style="margin-top:10px;">
+                    <button onclick="calculateSales()" style="padding:10px 15px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">查詢業績</button>
+                    <button onclick="exportExcel()" style="padding:10px 15px; background:#27ae60; color:white; border:none; border-radius:4px; cursor:pointer; font-weight:bold; margin-left:5px;">📥 導出 Excel</button>
+                </div>
+                <div style="margin-top:15px; display:flex; gap:10px;">
+                    <div style="flex:1; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;">銷售金額：<b id="range-total" style="color:var(--p); font-size:1.1em;">$0</b></div>
+                    <div style="flex:1; background:#fff; padding:10px; border-radius:5px; border:1px solid #eee;">銷售杯數：<b id="range-count" style="color:var(--p); font-size:1.1em;">0 杯</b></div>
+                </div>
+            </div>
+            <h3>📋 品項庫存</h3>
+            <button onclick="addNewCat()" style="margin-bottom:10px; padding:8px 15px; background:#2980b9; color:white; border:none; border-radius:4px;">＋新增分類</button>
+            <table>
+                <thead><tr style="background:#eee"><th>品名</th><th>售價</th><th>庫存</th><th>操作</th></tr></thead>
+                <tbody id="admin-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // 1. 設定與初始化
+        const firebaseConfig = {
+            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
+            authDomain: "lemontea-ad44d.firebaseapp.com",
+            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
+            projectId: "lemontea-ad44d",
+            storageBucket: "lemontea-ad44d.appspot.com",
+            messagingSenderId: "84807565645",
