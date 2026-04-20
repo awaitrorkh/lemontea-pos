@@ -2,8 +2,8 @@
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>小森檸 POS 旗艦修正版</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小森檸 POS - 手機版完美對齊版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -20,40 +20,33 @@
             messagingSenderId: "84807565645",
             appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
         };
-
         var db, auth, storeID = "", inv = [], cart = [], orders = {};
 
-        // 初始化 Firebase
         function initSystem() {
             if (typeof firebase !== "undefined") {
                 firebase.initializeApp(config);
                 db = firebase.database();
                 auth = firebase.auth();
-                console.log("系統初始化成功");
             }
         }
 
-        // 登入指令
         function doLogin() {
             var a = document.getElementById("acc").value;
             var p = document.getElementById("pw").value;
             if(!a || !p) return alert("請輸入帳號密碼");
-
             auth.signInWithEmailAndPassword(a, p).then(function(u){
                 storeID = a.split("@")[0].replace(/\./g, "_");
                 document.getElementById("login-screen").style.display = "none";
                 document.getElementById("pos-screen").style.display = "flex";
                 startSync();
-            }).catch(function(e){ 
-                alert("無法登入：" + e.message); 
-            });
+            }).catch(function(e){ alert("登入失敗：" + e.message); });
         }
 
         function startSync() {
             db.ref("stores/"+storeID+"/inventory").on("value", function(s){ 
                 inv = s.val() || []; 
                 renderPOS(); 
-                if(document.getElementById("admin-screen").style.display === "flex") renderEditor();
+                if(document.getElementById("admin-screen").style.display === "block") renderEditor();
             });
             db.ref("stores/"+storeID+"/orders").on("value", function(s){ orders = s.val() || {}; });
         }
@@ -62,14 +55,16 @@
             var tabs = document.getElementById("nav-tabs"), grid = document.getElementById("main-grid");
             tabs.innerHTML = ""; grid.innerHTML = "";
             inv.forEach(function(c, ci){
-                tabs.innerHTML += '<button class="nav-btn" onclick="document.getElementById(\'c-'+ci+'\').scrollIntoView()">'+c.cat+'</button>';
-                var h = '<div id="c-'+ci+'"><h3 style="border-left:5px solid #27ae60; padding-left:10px;">'+c.cat+'</h3>';
+                tabs.innerHTML += '<button class="nav-btn" onclick="scrollToCat('+ci+')">'+c.cat+'</button>';
+                var h = '<div id="c-'+ci+'" class="cat-section"><h3>'+c.cat+'</h3><div class="items-flex">';
                 (c.items || []).forEach(function(it){
-                    h += '<div class="p-card" onclick="addCart(\''+it.id+'\')"><b>'+it.n+'</b><br><span style="color:#27ae60">$'+it.p+'</span><br><small style="color:#999">存:'+it.s+'</small></div>';
+                    h += '<div class="p-card" onclick="addCart(\''+it.id+'\')"><b>'+it.n+'</b><span class="price">$'+it.p+'</span></div>';
                 });
-                grid.innerHTML += h + '</div>';
+                grid.innerHTML += h + '</div></div>';
             });
         }
+        
+        function scrollToCat(i) { document.getElementById('c-'+i).scrollIntoView({behavior: 'smooth'}); }
 
         function addCart(id) {
             inv.forEach(function(c){ (c.items || []).forEach(function(it){ if(it.id === id){ cart.push(JSON.parse(JSON.stringify(it))); renderCart(); } }); });
@@ -79,13 +74,14 @@
             var box = document.getElementById("cart-list"), t = 0; box.innerHTML = "";
             cart.forEach(function(it, idx){
                 t += it.p;
-                box.innerHTML += '<div style="padding:8px 0; border-bottom:1px solid #eee;">'+it.n+' <b style="float:right">$'+it.p+'</b><br><small onclick="cart.splice('+idx+',1);renderCart()" style="color:red; cursor:pointer;">移除</small></div>';
+                box.innerHTML += '<div class="cart-row"><span>'+it.n+' ($'+it.p+')</span><button onclick="cart.splice('+idx+',1);renderCart()">✕</button></div>';
             });
             document.getElementById("total-val").innerText = t;
+            document.getElementById("cart-count").innerText = cart.length;
         }
 
         function checkout() {
-            if(!cart.length) return;
+            if(!cart.length) return alert("購物車是空的");
             var now = new Date(), d = now.getFullYear()+"-"+("0"+(now.getMonth()+1)).slice(-2)+"-"+("0"+now.getDate()).slice(-2);
             var o = { d: d, t: now.getHours()+":"+now.getMinutes(), total: parseInt(document.getElementById("total-val").innerText), items: cart.map(function(i){ return {n:i.n, p:i.p}; }) };
             cart.forEach(function(cit){ inv.forEach(function(c){ (c.items || []).forEach(function(i){ if(i.id === cit.id) i.s--; }); }); });
@@ -95,17 +91,31 @@
             });
         }
 
-        // --- 管理後台相關 ---
-        function openAdmin() {
-            if(prompt("管理密碼") === "8888") {
-                document.getElementById("admin-screen").style.display = "flex";
-                renderEditor();
-            }
-        }
+        function openAdmin() { if(prompt("管理密碼") === "8888") { document.getElementById("admin-screen").style.display = "block"; renderEditor(); } }
         function closeAdmin() { document.getElementById("admin-screen").style.display = "none"; }
 
         function renderEditor() {
             var container = document.getElementById("editor-container");
             var html = "";
             inv.forEach(function(cat, cIdx) {
-                html += '<table style="width:100%; border-collapse:collapse; margin-bottom:20px; border:1px solid #ddd;">';
+                html += '<div class="admin-table-wrap"><h4>📁 ' + cat.cat + ' <button onclick="deleteCategory('+cIdx+')" class="btn-red" style="float:right">刪除分類</button></h4>';
+                html += '<table><tr><th>名稱</th><th>$</th><th>存</th><th>✕</th></tr>';
+                if (cat.items) {
+                    cat.items.forEach(function(item, iIdx) {
+                        html += '<tr><td><input type="text" value="'+item.n+'" onchange="updateData('+cIdx+','+iIdx+',\'n\',this.value)"></td>';
+                        html += '<td><input type="number" value="'+item.p+'" onchange="updateData('+cIdx+','+iIdx+',\'p\',this.value)"></td>';
+                        html += '<td><input type="number" value="'+item.s+'" onchange="updateData('+cIdx+','+iIdx+',\'s\',this.value)"></td>';
+                        html += '<td><button onclick="deleteItem('+cIdx+','+iIdx+')" class="btn-red">✕</button></td></tr>';
+                    });
+                }
+                html += '</table><button class="btn-blue" onclick="addNewItem('+cIdx+')">＋ 新增品項</button></div>';
+            });
+            container.innerHTML = html;
+        }
+
+        function updateData(ci, ii, f, v) { inv[ci].items[ii][f] = (f==='n'?v:Number(v)); saveInv(); }
+        function addNewItem(ci) { if(!inv[ci].items) inv[ci].items = []; inv[ci].items.push({id:"i"+Date.now(), n:"新飲品", p:50, s:100}); saveInv(); }
+        function addCategory() { var n = prompt("輸入分類名稱"); if(n){ inv.push({cat:n, items:[]}); saveInv(); } }
+        function deleteItem(ci, ii) { if(confirm("確定刪除品項？")){ inv[ci].items.splice(ii,1); saveInv(); } }
+        function deleteCategory(ci) { if(confirm("確定刪除整分類？")){ inv.splice(ci,1); saveInv(); } }
+        function saveInv() { db.ref("stores/"+storeID+"/inventory").set(inv); }
