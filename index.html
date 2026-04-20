@@ -35,9 +35,8 @@
         .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; font-size: 1.2em; border-radius: 8px; cursor: pointer; }
         #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
         .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; border: 1px solid #eee; }
-        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; }
+        input { padding: 10px; border: 1px solid #ddd; border-radius: 6px; width: 220px; }
         
-        /* 後台樣式優化 */
         #admin-panel { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; z-index: 20000; display: none; flex-direction: column; }
         .admin-header { padding: 15px; background: #333; color: white; display: flex; justify-content: space-between; align-items: center; }
         .admin-content { flex: 1; overflow-y: auto; padding: 20px; }
@@ -52,248 +51,17 @@
 
     <div id="login-overlay">
         <div class="login-box">
-            <h2 style="color:var(--p)">小森檸＆泰奶 POS</h2>
-            <input type="email" id="login-email" placeholder="分店帳號 (email)"><br><br>
-            <input type="password" id="login-pass" placeholder="密碼"><br><br>
-            <button onclick="handleLogin()" style="width:250px; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer;">進入系統</button>
+            <h2 style="color:var(--p)">小森檸 POS</h2>
+            <div id="login-form">
+                <input type="email" id="login-email" placeholder="帳號 (email)"><br><br>
+                <input type="password" id="login-pass" placeholder="密碼"><br><br>
+                <button id="login-btn" onclick="handleLogin()" style="width:245px; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer;">進入系統</button>
+            </div>
+            <p id="login-msg" style="color: #666; margin-top: 10px; display: none;">登入中，請稍候...</p>
         </div>
     </div>
 
     <div class="main">
         <div id="navbar"></div>
-        <div id="item-area"></div>
-    </div>
-
-    <div class="side">
-        <div class="cart-header">目前點餐</div>
-        <div id="cart-list"></div>
-        <div class="checkout-box">
-            <div class="total-row"><span>總計</span><span>$<span id="final-total">0</span></span></div>
-            <div class="pay-row">
-                <div id="btn-cash" class="pay-btn active" onclick="setPay('現金')">現金</div>
-                <div id="btn-elec" class="pay-btn" onclick="setPay('電支')">電支</div>
-            </div>
-            <button class="btn-submit" onclick="submitOrder()">確認結帳</button>
-            <button onclick="checkAdminPass()" style="margin-top:10px; width:100%; padding:10px; border:1px solid #ccc; background:#fff; color:#666; cursor:pointer; border-radius:5px;">⚙️ 進入管理後台</button>
-        </div>
-    </div>
-
-    <div id="admin-panel">
-        <div class="admin-header">
-            <b style="font-size:20px;">分店管理與報表查詢</b>
-            <button onclick="toggleAdmin()" style="padding:6px 15px; cursor:pointer;">關閉離開</button>
-        </div>
-        <div class="admin-content">
-            <h3>📊 銷售業績查詢</h3>
-            <div class="stat-card">
-                <div>從：<input type="date" id="date-start"></div>
-                <div>到：<input type="date" id="date-end"></div>
-                <button onclick="calculateSales()" class="add-btn" style="background:#34495e">查詢業績</button>
-                <button onclick="exportExcel()" class="excel-btn">📥 導出 Excel</button>
-                <div style="font-size: 1.2em; font-weight: bold; margin-left: 20px;">
-                    區間總銷售額：<span id="range-total" style="color:red">$0</span>
-                </div>
-            </div>
-
-            <h3>📋 庫存品項管理</h3>
-            <div style="margin-bottom: 15px;">
-                <button class="add-btn" onclick="addNewCat()" style="background:#2980b9">＋新增分類</button>
-            </div>
-            <table>
-                <thead>
-                    <tr style="background:#f4f4f4">
-                        <th>品名</th><th>成本</th><th>售價</th><th>庫存</th><th>操作</th>
-                    </tr>
-                </thead>
-                <tbody id="admin-tbody"></tbody>
-            </table>
-        </div>
-    </div>
-
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
-            authDomain: "lemontea-ad44d.firebaseapp.com",
-            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
-            projectId: "lemontea-ad44d",
-            storageBucket: "lemontea-ad44d.appspot.com",
-            messagingSenderId: "84807565645",
-            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
-        };
-
-        const ADMIN_PASSWORD = "8888"; // 你可以在這裡修改管理密碼
-
-        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
-        const db = firebase.database();
-
-        let inv = [], cart = [], orders = {}, currentPay = '現金';
-        window.currentStore = "";
-
-        function handleLogin() {
-            const email = document.getElementById('login-email').value;
-            const pass = document.getElementById('login-pass').value;
-            firebase.auth().signInWithEmailAndPassword(email, pass).then(u => {
-                window.currentStore = email.split('@')[0];
-                document.getElementById('login-overlay').style.display = 'none';
-                loadData();
-            }).catch(e => alert("登入失敗：" + e.message));
-        }
-
-        function loadData() {
-            // 讀取商品
-            db.ref(`stores/${window.currentStore}/inventory`).on('value', snap => {
-                inv = snap.val() || [{ cat: "請新增商品", items: [] }];
-                initUI();
-            });
-            // 讀取訂單 (用於統計)
-            db.ref(`stores/${window.currentStore}/orders`).on('value', snap => {
-                orders = snap.val() || {};
-            });
-        }
-
-        function checkAdminPass() {
-            const p = prompt("請輸入管理員密碼：");
-            if (p === ADMIN_PASSWORD) {
-                toggleAdmin();
-            } else {
-                alert("密碼錯誤！");
-            }
-        }
-
-        function toggleAdmin() {
-            const p = document.getElementById('admin-panel');
-            p.style.display = (p.style.display === 'flex') ? 'none' : 'flex';
-            if (p.style.display === 'flex') {
-                renderAdminTable();
-                // 預設日期為今天
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('date-start').value = today;
-                document.getElementById('date-end').value = today;
-            }
-        }
-
-        // 銷售額計算
-        function calculateSales() {
-            const start = document.getElementById('date-start').value;
-            const end = document.getElementById('date-end').value;
-            let total = 0;
-            
-            Object.values(orders).forEach(o => {
-                // 這裡的 o.d 是訂單日期 (格式 YYYY/M/D)
-                const orderDate = new Date(o.d).toISOString().split('T')[0];
-                if (orderDate >= start && orderDate <= end) {
-                    total += Number(o.total || 0);
-                }
-            });
-            document.getElementById('range-total').innerText = `$${total}`;
-        }
-
-        // Excel 導出
-        function exportExcel() {
-            const start = document.getElementById('date-start').value;
-            const end = document.getElementById('date-end').value;
-            let exportData = [];
-
-            Object.values(orders).forEach(o => {
-                const orderDate = new Date(o.d).toISOString().split('T')[0];
-                if (orderDate >= start && orderDate <= end) {
-                    exportData.push({
-                        "日期": o.d,
-                        "時間": o.t,
-                        "總金額": o.total,
-                        "付款方式": o.pay,
-                        "內容": o.items.map(i => i.n).join(', ')
-                    });
-                }
-            });
-
-            if (exportData.length === 0) return alert("該區間無銷售資料");
-
-            const ws = XLSX.utils.json_to_sheet(exportData);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "銷售報表");
-            XLSX.writeFile(wb, `小森檸銷售報表_${start}_to_${end}.xlsx`);
-        }
-
-        // --- 以下為原本的 POS 邏輯 ---
-        function initUI() {
-            const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
-            area.innerHTML = ''; nav.innerHTML = '';
-            inv.forEach((cat, idx) => {
-                if (cat.items && cat.items.length > 0) {
-                    nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
-                    let grid = `<div class="cat-title" id="c${idx}">${cat.cat}</div><div class="product-grid">`;
-                    cat.items.forEach(it => {
-                        grid += `<div class="p-btn" onclick="addCart('${it.id}')">
-                            <div class="p-name">${it.n}</div>
-                            <div class="p-price">$${it.p}</div>
-                            <div class="p-stock">存:${it.s}</div>
-                        </div>`;
-                    });
-                    area.innerHTML += grid + '</div>';
-                }
-            });
-            if(document.getElementById('admin-panel').style.display === 'flex') renderAdminTable();
-        }
-
-        function renderAdminTable() {
-            let h = '';
-            inv.forEach((cat, ci) => {
-                h += `<tr style="background:#eee"><td colspan="4" style="text-align:left; padding-left:15px;">
-                    <b>📂 分類：</b><input type="text" value="${cat.cat}" onchange="editCat(${ci}, this.value)" style="width:120px; padding:5px;">
-                    <button class="add-btn" onclick="addNewItem(${ci})" style="margin-left:10px;">＋新增品項</button></td>
-                    <td><span style="color:red; cursor:pointer;" onclick="delCat(${ci})">刪除分類</span></td></tr>`;
-                (cat.items || []).forEach((it, ii) => {
-                    h += `<tr>
-                        <td><input type="text" value="${it.n}" onchange="editItem(${ci},${ii},'n',this.value)" style="width:120px"></td>
-                        <td><input type="number" value="${it.c||0}" onchange="editItem(${ci},${ii},'c',this.value)" style="width:60px"></td>
-                        <td><input type="number" value="${it.p||0}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:60px"></td>
-                        <td><input type="number" value="${it.s||0}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:60px"></td>
-                        <td><span style="color:red; cursor:pointer;" onclick="delP(${ci},${ii})">✕</span></td></tr>`;
-                });
-            });
-            document.getElementById('admin-tbody').innerHTML = h;
-        }
-
-        function addNewCat() {
-            const name = prompt("輸入分類名稱：");
-            if(name) { inv.push({ cat: name, items: [] }); db.ref(`stores/${window.currentStore}/inventory`).set(inv); }
-        }
-
-        function addNewItem(ci) {
-            inv[ci].items.push({ id: "i"+Date.now(), n: "新產品", c: 0, p: 50, s: 100 });
-            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
-        }
-
-        function editCat(ci, val) { inv[ci].cat = val; db.ref(`stores/${window.currentStore}/inventory`).set(inv); }
-        function editItem(ci, ii, k, v) { inv[ci].items[ii][k] = (k==='n'?v:Number(v)); db.ref(`stores/${window.currentStore}/inventory`).set(inv); }
-        function delP(ci, ii) { if(confirm("確定？")){ inv[ci].items.splice(ii,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
-        function delCat(ci) { if(confirm("確定？")){ inv.splice(ci,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
-
-        function addCart(id) {
-            inv.forEach(c => (c.items || []).forEach(i => { if(i.id === id) { cart.push({...i}); renderCart(); } }));
-        }
-
-        function renderCart() {
-            document.getElementById('cart-list').innerHTML = cart.map((it, i) => `
-                <div class="cart-item"><span>${it.n}</span><b>$${it.p}</b><span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer;">✕</span></div>`).join('');
-            document.getElementById('final-total').innerText = cart.reduce((a,b)=>a+b.p, 0);
-        }
-
-        function setPay(m) {
-            currentPay = m;
-            document.getElementById('btn-cash').className = m === '現金' ? 'pay-btn active' : 'pay-btn';
-            document.getElementById('btn-elec').className = m === '電支' ? 'pay-btn active' : 'pay-btn';
-        }
-
-        function submitOrder() {
-            if(!cart.length || !window.currentStore) return;
-            const order = { d: new Date().toLocaleDateString(), t: new Date().toLocaleTimeString(), total: Number(document.getElementById('final-total').innerText), items: [...cart], pay: currentPay };
-            cart.forEach(item => { inv.forEach(c => (c.items || []).forEach(i => { if(i.id === item.id) i.s--; })); });
-            db.ref(`stores/${window.currentStore}/orders`).push(order);
-            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
-            alert("結帳完成！"); cart = []; renderCart();
-        }
-    </script>
-</body>
-</html>
+        <div id="item-area">
+            <p style="text-align:center; color:#888; margin-top:50px;">載入中或目前無資料，請先進入
