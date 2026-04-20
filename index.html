@@ -218,8 +218,6 @@
     ];
 
     // 修改後的讀取資料函數 (根據店鋪路徑)
-        if(!window.currentStore) return; // 沒登入就不跑
-
         const storePath = `stores/${window.currentStore}`; 
 
         if(db && firebaseConfig.apiKey !== "請替換為您的API_KEY") {
