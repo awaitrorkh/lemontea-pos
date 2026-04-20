@@ -48,4 +48,63 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
         .add-btn { background: #27ae60; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; }
-        .excel-btn { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius:
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color:var(--p)">小森檸＆泰奶 POS</h2>
+            <div id="login-form">
+                <input type="email" id="login-email" placeholder="帳號 (email)"><br><br>
+                <input type="password" id="login-pass" placeholder="密碼"><br><br>
+                <button id="login-btn" onclick="handleLogin()" style="width:245px; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer;">進入系統</button>
+            </div>
+            <p id="login-msg" style="color: #666; margin-top: 10px; display: none;">驗證中，請稍候...</p>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="navbar"></div>
+        <div id="item-area"></div>
+    </div>
+
+    <div class="side">
+        <div class="cart-header">目前點餐</div>
+        <div id="cart-list"></div>
+        <div class="checkout-box">
+            <div class="total-row"><span>總計</span><span>$<span id="final-total">0</span></span></div>
+            <div class="pay-row">
+                <div id="btn-cash" class="pay-btn active" onclick="setPay('現金')">現金</div>
+                <div id="btn-elec" class="pay-btn" onclick="setPay('電支')">電支</div>
+            </div>
+            <button class="btn-submit" onclick="submitOrder()">確認結帳</button>
+            <button onclick="checkAdminPass()" style="margin-top:10px; width:100%; padding:10px; border:1px solid #ccc; background:#fff; color:#666; cursor:pointer; border-radius:5px;">⚙️ 進入管理後台</button>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <div class="admin-header">
+            <b style="font-size:20px;">分店管理與報表查詢</b>
+            <button onclick="toggleAdmin()" style="padding:6px 15px; cursor:pointer;">關閉離開</button>
+        </div>
+        <div class="admin-content">
+            <h3>📊 銷售業績查詢</h3>
+            <div class="stat-card">
+                <div>從：<input type="date" id="date-start"></div>
+                <div>到：<input type="date" id="date-end"></div>
+                <button onclick="calculateSales()" class="add-btn" style="background:#34495e">查詢業績</button>
+                <button onclick="exportExcel()" class="add-btn" style="background:#2ecc71">📥 導出 Excel</button>
+                
+                <div class="stat-item">
+                    <div class="stat-label">區間總銷售額</div>
+                    <div class="stat-value" id="range-total">$0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">區間總杯數</div>
+                    <div class="stat-value" id="range-count">0 杯</div>
+                </div>
+            </div>
+
+            <h3>📋 庫存品項管理</h3>
+            <button class="add-btn" onclick="addNewCat()" style="background:#298
