@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS 完整管理版</title>
+    <title>小森檸 POS 旗艦管理版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -11,44 +11,49 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
     <style>
-        :root { --p: #27ae60; --dark: #2c3e50; }
+        :root { --p: #27ae60; --dark: #2c3e50; --warn: #e67e22; }
         body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; background: #f4f4f9; display: flex; height: 100vh; overflow: hidden; }
         
-        /* 登入介面 */
+        /* 登入區 */
         #login-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10000; display:flex; align-items:center; justify-content:center; }
         .login-box { width: 300px; padding: 40px; border: 1px solid #ddd; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         
-        /* 主佈局 */
+        /* POS 畫面 */
         #pos-screen { display: none; width: 100%; height: 100%; flex-direction: row; }
         .menu-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; background: #f8f9fa; }
         .cart-area { width: 320px; background: white; border-left: 2px solid #ddd; display: flex; flex-direction: column; }
         
-        /* 商品與導覽 */
         .nav-bar { background: white; padding: 10px; display: flex; gap: 10px; overflow-x: auto; border-bottom: 2px solid var(--p); }
         .nav-btn { padding: 8px 15px; background: #eee; border-radius: 20px; border: none; cursor: pointer; white-space: nowrap; }
         .item-grid { flex: 1; overflow-y: auto; padding: 15px; }
         .p-card { display: inline-block; width: 110px; background: white; padding: 15px; margin: 5px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; cursor: pointer; }
         
-        /* 管理後台層 */
-        #admin-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9000; display:none; flex-direction: column; padding: 25px; box-sizing: border-box; overflow-y: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
-        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
-        th { background: #f4f4f4; }
-        input[type="text"], input[type="number"] { padding: 5px; border: 1px solid #ccc; width: 80%; }
+        /* 管理後台 - 強制置頂 */
+        #admin-screen { position: fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:9999; display:none; flex-direction: column; padding: 25px; box-sizing: border-box; overflow-y: auto; }
+        .admin-header { display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
         
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; margin-bottom: 30px; }
+        th, td { border: 1px solid #ddd; padding: 12px; text-align: center; }
+        th { background: #34495e; color: white; }
+        
+        /* 按鈕樣式優化 */
         .btn { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
-        .btn-p { background: var(--p); color: white; }
-        .btn-d { background: #e74c3c; color: white; }
+        .btn-add-cat { background: var(--warn); color: white; font-size: 16px; margin-bottom: 15px; }
+        .btn-add-item { background: #3498db; color: white; padding: 5px 12px; font-size: 13px; }
+        .btn-del { background: #e74c3c; color: white; padding: 5px 10px; }
+        .btn-save { background: var(--p); color: white; }
+        
+        input.edit-input { width: 90%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; text-align: center; }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <div class="login-box">
-            <h2 style="color:var(--p)">小森檸 POS 登入</h2>
+            <h2 style="color:var(--p)">小森檸 POS 系統</h2>
             <input type="text" id="acc" placeholder="帳號" style="width:100%; padding:10px; margin:10px 0;">
             <input type="password" id="pw" placeholder="密碼" style="width:100%; padding:10px; margin:10px 0;">
-            <button onclick="doLogin()" class="btn btn-p" style="width:100%">進入系統</button>
+            <button onclick="doLogin()" class="btn btn-save" style="width:100%">登入</button>
         </div>
     </div>
 
@@ -58,41 +63,74 @@
             <div class="item-grid" id="main-grid"></div>
         </div>
         <div class="cart-area">
-            <div style="padding:15px; background:var(--dark); color:white;">🛒 目前點餐明細</div>
+            <div style="padding:15px; background:var(--dark); color:white;">🛒 目前訂單</div>
             <div id="cart-list" style="flex:1; overflow-y:auto; padding:10px;"></div>
             <div style="padding:15px; background:#eee;">
                 <div style="font-size:1.5em; font-weight:bold; margin-bottom:10px;">總計: $<span id="total-val">0</span></div>
-                <button onclick="checkout()" class="btn btn-p" style="width:100%; padding:15px; font-size:1.2em;">確認結帳</button>
-                <button onclick="openAdmin()" style="width:100%; margin-top:10px; background:none; border:1px solid #ccc; padding:8px;">⚙️ 管理與報表</button>
+                <button onclick="checkout()" class="btn btn-save" style="width:100%; padding:15px;">確認結帳</button>
+                <button onclick="openAdmin()" style="width:100%; margin-top:10px; border:1px solid #ccc; background:none; padding:8px;">⚙️ 進入後台管理 (品項/報表)</button>
             </div>
         </div>
     </div>
 
     <div id="admin-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>🛠️ 店務管理系統</h2>
-            <button onclick="closeAdmin()" class="btn">關閉返回</button>
+        <div class="admin-header">
+            <h2>🛠️ 店務管理與品項編輯</h2>
+            <button onclick="closeAdmin()" class="btn" style="background:#999; color:white;">關閉並返回點餐</button>
         </div>
-        <hr>
+
+        <div style="background:#fdf2e9; padding:20px; border-radius:10px; margin-bottom:20px; border:1px solid #e67e22;">
+            <h3 style="margin-top:0; color:#e67e22;">第一步：管理分類</h3>
+            <button onclick="addCategory()" class="btn btn-add-cat">＋ 新增飲品分類 (如：泰奶系列)</button>
+            <p style="font-size:12px; color:#666;">* 分類新增後，請在下方對應的表格中「新增品項」。</p>
+        </div>
+
+        <div id="editor-container">
+            </div>
+
+        <hr style="margin:40px 0;">
         
-        <div style="background:#f9f9f9; padding:20px; border-radius:10px; margin-bottom:25px;">
-            <h3>📊 業績查詢</h3>
-            日期：<input type="date" id="date-s"> 至 <input type="date" id="date-e">
-            <button onclick="fetchSales()" class="btn btn-p">執行查詢</button>
+        <div style="background:#ebf5fb; padding:20px; border-radius:10px;">
+            <h3>📊 業績報表查詢</h3>
+            <input type="date" id="date-s"> 到 <input type="date" id="date-e">
+            <button onclick="fetchSales()" class="btn btn-save">查詢</button>
             <button onclick="exportXls()" class="btn" style="background:#3498db; color:white;">📥 導出 Excel</button>
             <div style="margin-top:15px; display:flex; gap:20px;">
                 <div style="flex:1; background:white; padding:15px; border:1px solid #ddd;">銷售總額：<b id="sale-m" style="color:red; font-size:1.5em;">$0</b></div>
                 <div style="flex:1; background:white; padding:15px; border:1px solid #ddd;">總杯數：<b id="sale-c" style="color:red; font-size:1.5em;">0 杯</b></div>
             </div>
         </div>
-
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>📋 品項庫存管理</h3>
-            <button onclick="addCategory()" class="btn btn-p">＋ 新增分類</button>
-        </div>
-        <div id="inventory-editor"></div>
     </div>
 
     <script>
         var config = {
-            apiKey: "AIzaSyDXSWg
+            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
+            authDomain: "lemontea-ad44d.firebaseapp.com",
+            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
+            projectId: "lemontea-ad44d",
+            storageBucket: "lemontea-ad44d.appspot.com",
+            messagingSenderId: "84807565645",
+            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
+        };
+
+        var db, auth, storeID = "", inv = [], cart = [], orders = {};
+
+        window.onload = function() { firebase.initializeApp(config); db = firebase.database(); auth = firebase.auth(); };
+
+        function doLogin() {
+            var a = document.getElementById("acc").value, p = document.getElementById("pw").value;
+            auth.signInWithEmailAndPassword(a, p).then(function(u){
+                storeID = a.split("@")[0].replace(/\./g, "_");
+                document.getElementById("login-screen").style.display = "none";
+                document.getElementById("pos-screen").style.display = "flex";
+                sync();
+            }).catch(function(e){ alert("登入失敗: " + e.message); });
+        }
+
+        function sync() {
+            db.ref("stores/"+storeID+"/inventory").on("value", function(s){ 
+                inv = s.val() || []; 
+                renderPOS(); 
+                renderEditor(); 
+            });
+            db.ref("
