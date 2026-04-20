@@ -50,3 +50,227 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     </style>
 </head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color:var(--p); margin-top:0;">小森檸 POS</h2>
+            <input type="email" id="login-email" placeholder="帳號 (Email)">
+            <input type="password" id="login-pass" placeholder="密碼">
+            <button id="login-btn" onclick="handleLogin()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:6px; cursor:pointer; font-size:16px;">進入系統</button>
+            <div id="login-msg" style="color:red; margin-top:10px; font-size:14px; min-height:20px;"></div>
+            <button onclick="location.reload()" style="background:none; border:none; color:#999; text-decoration:underline; font-size:12px; margin-top:20px; cursor:pointer;">畫面卡住？點此重新載入</button>
+        </div>
+    </div>
+
+    <div class="main">
+        <div id="navbar"></div>
+        <div id="item-area"></div>
+    </div>
+
+    <div class="side">
+        <div class="cart-header">目前點餐</div>
+        <div id="cart-list"></div>
+        <div class="checkout-box">
+            <div class="total-row"><span>總計</span><span>$<span id="final-total">0</span></span></div>
+            <div class="pay-row">
+                <div id="btn-cash" class="pay-btn active" onclick="setPay('現金')">現金</div>
+                <div id="btn-elec" class="pay-btn" onclick="setPay('電支')">電支</div>
+            </div>
+            <button class="btn-submit" onclick="submitOrder()">確認結帳</button>
+            <button onclick="checkAdminPass()" style="margin-top:10px; width:100%; padding:10px; border:1px solid #ccc; background:#fff; color:#666; cursor:pointer; border-radius:5px;">⚙️ 進入管理後台</button>
+        </div>
+    </div>
+
+    <div id="admin-panel">
+        <div class="admin-header">
+            <b style="font-size:18px;">分店管理與業績報表</b>
+            <button onclick="toggleAdmin()" style="padding:6px 12px; cursor:pointer;">關閉</button>
+        </div>
+        <div class="admin-content">
+            <h3>📊 業績查詢</h3>
+            <div class="stat-card">
+                <div>從：<input type="date" id="date-start" style="width:auto; margin:0;"></div>
+                <div>到：<input type="date" id="date-end" style="width:auto; margin:0;"></div>
+                <button onclick="calculateSales()" style="padding:10px 20px; background:#34495e; color:white; border:none; border-radius:4px; cursor:pointer;">查詢</button>
+                <div class="stat-item"><div class="stat-label">銷售總額</div><div class="stat-value" id="range-total">$0</div></div>
+                <div class="stat-item"><div class="stat-label">銷售杯數</div><div class="stat-value" id="range-count">0 杯</div></div>
+            </div>
+            <h3>📋 品項庫存</h3>
+            <button onclick="addNewCat()" style="padding:8px 15px; background:#2980b9; color:white; border:none; border-radius:4px; cursor:pointer; margin-bottom:10px;">＋新增分類</button>
+            <table id="admin-table">
+                <thead><tr style="background:#eee"><th>品名</th><th>售價</th><th>庫存</th><th>操作</th></tr></thead>
+                <tbody id="admin-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
+            authDomain: "lemontea-ad44d.firebaseapp.com",
+            databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
+            projectId: "lemontea-ad44d",
+            storageBucket: "lemontea-ad44d.appspot.com",
+            messagingSenderId: "84807565645",
+            appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
+        };
+
+        const ADMIN_PASSWORD = "8888"; 
+        
+        // --- 初始化 ---
+        let db, auth, inv = [], cart = [], orders = {}, currentPay = '現金';
+        window.currentStore = "";
+
+        try {
+            if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            auth = firebase.auth();
+        } catch (e) {
+            alert("Firebase 初始化失敗，請檢查網路連線");
+        }
+
+        function handleLogin() {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+            const btn = document.getElementById('login-btn');
+            const msg = document.getElementById('login-msg');
+
+            if(!email || !pass) return alert("請輸入帳號密碼");
+
+            btn.disabled = true;
+            btn.innerText = "驗證中...";
+            msg.innerText = "";
+
+            auth.signInWithEmailAndPassword(email, pass).then(u => {
+                window.currentStore = email.split('@')[0].replace(/\./g, '_');
+                document.getElementById('login-overlay').style.display = 'none';
+                loadData();
+            }).catch(e => {
+                btn.disabled = false;
+                btn.innerText = "進入系統";
+                msg.innerText = "登入失敗：密碼錯誤或網路異常";
+            });
+        }
+
+        function loadData() {
+            db.ref(`stores/${window.currentStore}/inventory`).on('value', snap => {
+                inv = snap.val() || [];
+                initUI();
+            });
+            db.ref(`stores/${window.currentStore}/orders`).on('value', snap => {
+                orders = snap.val() || {};
+            });
+        }
+
+        function initUI() {
+            const area = document.getElementById('item-area'), nav = document.getElementById('navbar');
+            area.innerHTML = ''; nav.innerHTML = '';
+            if(!inv.length) {
+                area.innerHTML = '<p style="text-align:center; padding-top:50px; color:#999;">目前無商品。請點擊右下角進入管理後台新增。</p>';
+                return;
+            }
+            inv.forEach((cat, idx) => {
+                nav.innerHTML += `<div class="nav-btn" onclick="document.getElementById('c${idx}').scrollIntoView()">${cat.cat}</div>`;
+                let grid = `<div class="cat-title" id="c${idx}">${cat.cat}</div><div class="product-grid">`;
+                (cat.items || []).forEach(it => {
+                    grid += `<div class="p-btn" onclick="addCart('${it.id}')"><div class="p-name">${it.n}</div><div class="p-price">$${it.p}</div><div class="p-stock">存:${it.s}</div></div>`;
+                });
+                area.innerHTML += grid + '</div>';
+            });
+            if(document.getElementById('admin-panel').style.display === 'flex') renderAdminTable();
+        }
+
+        // --- 點餐功能 ---
+        function addCart(id) {
+            inv.forEach(c => (c.items || []).forEach(i => { if(i.id === id) { cart.push({...i}); renderCart(); } }));
+        }
+        function renderCart() {
+            document.getElementById('cart-list').innerHTML = cart.map((it, i) => `<div class="cart-item"><span>${it.n}</span><b>$${it.p}</b><span onclick="cart.splice(${i},1);renderCart()" style="color:red; cursor:pointer; padding:5px;">✕</span></div>`).join('');
+            document.getElementById('final-total').innerText = cart.reduce((a,b)=>a+b.p, 0);
+        }
+        function setPay(m) {
+            currentPay = m;
+            document.getElementById('btn-cash').className = m === '現金' ? 'pay-btn active' : 'pay-btn';
+            document.getElementById('btn-elec').className = m === '電支' ? 'pay-btn active' : 'pay-btn';
+        }
+        function submitOrder() {
+            if(!cart.length) return;
+            const now = new Date();
+            const order = { 
+                d: now.toLocaleDateString('zh-TW'), 
+                t: now.toLocaleTimeString('zh-TW', {hour12:false}), 
+                total: Number(document.getElementById('final-total').innerText), 
+                items: [...cart], pay: currentPay 
+            };
+            cart.forEach(item => { inv.forEach(c => (c.items || []).forEach(i => { if(i.id === item.id) i.s--; })); });
+            db.ref(`stores/${window.currentStore}/orders`).push(order);
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
+            alert("結帳完成！"); cart = []; renderCart();
+        }
+
+        // --- 業績查詢 (修復版) ---
+        function calculateSales() {
+            const start = document.getElementById('date-start').value;
+            const end = document.getElementById('date-end').value;
+            if(!start || !end) return alert("請選擇日期範圍");
+
+            let m = 0, c = 0;
+            Object.values(orders).forEach(o => {
+                // 將資料庫日期轉為 YYYY-MM-DD 格式進行比對
+                const oDate = new Date(o.d.replace(/\//g, '-')).toISOString().split('T')[0];
+                if (oDate >= start && oDate <= end) {
+                    m += (o.total || 0);
+                    if (o.items) c += o.items.length;
+                }
+            });
+            document.getElementById('range-total').innerText = `$${m}`;
+            document.getElementById('range-count').innerText = `${c} 杯`;
+        }
+
+        // --- 管理功能 ---
+        function checkAdminPass() {
+            const p = prompt("管理密碼：");
+            if (p === ADMIN_PASSWORD) toggleAdmin();
+            else if (p !== null) alert("密碼錯誤");
+        }
+        function toggleAdmin() {
+            const p = document.getElementById('admin-panel');
+            const isShow = p.style.display === 'flex';
+            p.style.display = isShow ? 'none' : 'flex';
+            if (!isShow) {
+                renderAdminTable();
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('date-start').value = today;
+                document.getElementById('date-end').value = today;
+            }
+        }
+        function renderAdminTable() {
+            let h = '';
+            inv.forEach((cat, ci) => {
+                h += `<tr style="background:#f9f9f9"><td colspan="3" style="text-align:left; font-weight:bold;">📂 ${cat.cat} <button onclick="addNewItem(${ci})">＋加品</button></td><td><span onclick="delCat(${ci})" style="color:red;cursor:pointer;">刪除</span></td></tr>`;
+                (cat.items || []).forEach((it, ii) => {
+                    h += `<tr>
+                        <td><input value="${it.n}" onchange="editItem(${ci},${ii},'n',this.value)" style="width:90px; margin:0; padding:4px;"></td>
+                        <td><input type="number" value="${it.p}" onchange="editItem(${ci},${ii},'p',this.value)" style="width:50px; margin:0; padding:4px;"></td>
+                        <td><input type="number" value="${it.s}" onchange="editItem(${ci},${ii},'s',this.value)" style="width:50px; margin:0; padding:4px;"></td>
+                        <td><span onclick="delP(${ci},${ii})" style="color:red;cursor:pointer;">✕</span></td></tr>`;
+                });
+            });
+            document.getElementById('admin-tbody').innerHTML = h;
+        }
+        function addNewCat() {
+            const n = prompt("分類名稱：");
+            if(n) { inv.push({ cat: n, items: [] }); db.ref(`stores/${window.currentStore}/inventory`).set(inv); }
+        }
+        function addNewItem(ci) {
+            if(!inv[ci].items) inv[ci].items = [];
+            inv[ci].items.push({ id: "i"+Date.now(), n: "新產品", p: 50, s: 100 });
+            db.ref(`stores/${window.currentStore}/inventory`).set(inv);
+        }
+        function editItem(ci, ii, k, v) { inv[ci].items[ii][k] = (k==='n'?v:Number(v)); db.ref(`stores/${window.currentStore}/inventory`).set(inv); }
+        function delP(ci, ii) { if(confirm("刪除？")){ inv[ci].items.splice(ii,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
+        function delCat(ci) { if(confirm("連分類一起刪除？")){ inv.splice(ci,1); db.ref(`stores/${window.currentStore}/inventory`).set(inv); } }
+    </script>
+</body>
+</html>
