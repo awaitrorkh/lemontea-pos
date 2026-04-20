@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 系統診斷修復版</title>
+    <title>小森檸 POS - 原始修復版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -11,20 +11,64 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
 
     <style>
-        :root { --p: #27ae60; }
-        body { font-family: sans-serif; margin: 0; background: #f4f4f9; display: flex; height: 100vh; overflow: hidden; }
-        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #navbar { display: flex; background: #fff; padding: 10px; gap: 10px; overflow-x: auto; border-bottom: 2px solid var(--p); min-height: 50px; }
-        .nav-btn { padding: 8px 15px; background: #eee; border-radius: 20px; white-space: nowrap; cursor: pointer; border:none; }
-        #item-area { flex: 1; overflow-y: auto; padding: 15px; }
-        .product-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 10px; }
-        .p-btn { background: #fff; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); text-align: center; cursor: pointer; }
-        .side { width: 300px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
-        .cart-header { padding: 15px; background: #2c3e50; color: white; font-weight: bold; }
-        #cart-list { flex: 1; overflow-y: auto; padding: 10px; }
-        .checkout-box { padding: 15px; background: #eee; border-top: 1px solid #ccc; }
-        .btn-submit { width: 100%; padding: 15px; background: #e67e22; color: white; border: none; font-size: 1.2em; border-radius: 8px; cursor: pointer; }
+        body { font-family: sans-serif; margin: 0; background-color: #f4f4f4; color: #333; }
+        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #ffffff; z-index: 9999; display: block; text-align: center; padding-top: 100px; }
+        .login-box { display: inline-block; width: 280px; padding: 20px; border: 1px solid #ccc; border-radius: 10px; background: #fff; }
+        input { width: 90%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; }
+        button { cursor: pointer; }
+        #pos-main { display: none; } /* 預設隱藏，登入後才顯示 */
         
-        /* 登入視窗強制置頂 */
-        #login-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f4f4f9; z-index: 99999; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); text-align
+        /* 佈局 */
+        .wrapper { display: flex; height: 100vh; overflow: hidden; }
+        .left-side { flex: 1; display: flex; flex-direction: column; }
+        .right-side { width: 300px; background: #fff; border-left: 1px solid #ddd; display: flex; flex-direction: column; }
+        
+        #nav-bar { background: #27ae60; padding: 10px; display: flex; overflow-x: auto; color: white; }
+        #menu-area { flex: 1; overflow-y: auto; padding: 15px; }
+        .item-card { display: inline-block; width: 100px; margin: 5px; padding: 10px; background: #fff; border-radius: 5px; box-shadow: 0 1px 3px rgba(0,0,0,0.2); text-align: center; }
+        
+        #admin-layer { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #fff; z-index: 8888; display: none; overflow-y: auto; padding: 20px; box-sizing: border-box; }
+    </style>
+</head>
+<body>
+
+    <div id="login-overlay">
+        <div class="login-box">
+            <h2 style="color:#27ae60">小森檸 POS 系統</h2>
+            <p id="sys-msg" style="font-size:12px; color:gray;">系統連線載入中...</p>
+            <input type="text" id="user-mail" placeholder="電子郵件">
+            <input type="password" id="user-pw" placeholder="密碼">
+            <button id="entry-btn" onclick="startLogin()" style="width:100%; padding:10px; background:#27ae60; color:#fff; border:none; border-radius:5px;">進入系統</button>
+            <br><br>
+            <button onclick="location.reload()" style="font-size:12px; background:none; border:none; color:blue; text-decoration:underline;">畫面不正常？點此重整</button>
+        </div>
+    </div>
+
+    <div id="pos-main">
+        <div class="wrapper">
+            <div class="left-side">
+                <div id="nav-bar"></div>
+                <div id="menu-area"></div>
+            </div>
+            <div class="right-side">
+                <div style="padding:15px; background:#333; color:#fff;">點餐明細</div>
+                <div id="cart-box" style="flex:1; padding:10px; overflow-y:auto;"></div>
+                <div style="padding:15px; background:#eee;">
+                    <div style="font-size:20px; font-weight:bold; margin-bottom:10px;">總計: $<span id="total-val">0</span></div>
+                    <button onclick="doCheckout()" style="width:100%; padding:15px; background:#e67e22; color:#fff; border:none; font-size:18px; border-radius:5px;">確認結帳</button>
+                    <button onclick="openAdmin()" style="margin-top:10px; width:100%; background:none; border:1px solid #ccc; padding:5px;">後台報表</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="admin-layer">
+        <button onclick="closeAdmin()" style="float:right; padding:10px;">關閉後台</button>
+        <h2>📊 營業報表與管理</h2>
+        <hr>
+        <div style="background:#f9f9f9; padding:15px; border-radius:5px;">
+            查詢日期：<input type="date" id="s-date"> 到 <input type="date" id="e-date">
+            <button onclick="runReport()" style="padding:5px 15px;">查詢業績</button>
+            <button onclick="doExcel()" style="padding:5px 15px; background:#27ae60; color:#fff; border:none;">📥 導出 Excel</button>
+            <div style="margin-top:15px;">
+                <span style="margin-right:20px;">總銷售額：<b id="res
