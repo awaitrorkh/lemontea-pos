@@ -1,121 +1,151 @@
-<!-- 請全選並覆蓋您原本的 index.html -->
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 報表強化版</title>
+    <title>小森檸 POS - 專業管理版</title>
+    
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
-        :root { --p: #27ae60; --s: #e67e22; --bg: #f4f7f6; }
-        body { font-family: -apple-system, sans-serif; margin: 0; background: var(--bg); height: 100vh; overflow: hidden; }
-        #boot-screen { position: fixed; inset: 0; background: #fff; z-index: 10000; display: flex; align-items: center; justify-content: center; }
+        :root { --p: #27ae60; --p-dark: #219150; --s: #e67e22; --bg: #f8f9fa; --text: #2c3e50; }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; margin: 0; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
+        
+        /* 載入中 */
+        #boot-screen { position: fixed; inset: 0; background: #fff; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .spinner { width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid var(--p); border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* 登入樣式 */
         .full-screen-center { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        .btn-main { background: var(--p); color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; font-size: 18px; cursor: pointer; }
+        .login-card { background: #fff; padding: 30px; border-radius: 24px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); width: 100%; max-width: 360px; text-align: center; }
+        input { width: 100%; padding: 16px; margin: 12px 0; border: 1.5px solid #eee; border-radius: 12px; font-size: 16px; transition: 0.3s; }
+        .btn-main { background: var(--p); color: #fff; border: none; padding: 16px; border-radius: 12px; font-weight: 600; width: 100%; font-size: 18px; cursor: pointer; transition: 0.2s; }
+        .btn-main:active { transform: scale(0.98); background: var(--p-dark); }
+        
+        /* POS 主界面 */
         #pos-screen { display: none; flex-direction: column; height: 100vh; }
-        header { background: var(--p); color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        header { background: var(--p); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .header-info { display: flex; align-items: center; gap: 10px; }
+        .revenue-tag { background: rgba(0,0,0,0.15); padding: 4px 10px; border-radius: 6px; font-size: 13px; font-weight: bold; display: none; } /* 預設隱藏 */
+
+        /* 分類導航 */
+        .nav-bar { display: flex; gap: 10px; overflow-x: auto; padding: 12px 15px; background: #fff; border-bottom: 1px solid #eee; scrollbar-width: none; }
+        .nav-btn { padding: 10px 20px; background: #f0f0f0; border: none; border-radius: 25px; white-space: nowrap; font-weight: 500; color: #666; }
+        .nav-btn.active { background: var(--p); color: #fff; }
+
+        /* 商品格線 */
+        #main-grid { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 220px; background: #f4f7f6; }
+        .category-sec { margin-bottom: 25px; }
+        .category-title { font-size: 18px; font-weight: bold; margin-bottom: 12px; color: #333; padding-left: 8px; border-left: 5px solid var(--p); }
+        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .p-card { background: #fff; padding: 12px 5px; border-radius: 16px; text-align: center; border: 1px solid rgba(0,0,0,0.02); box-shadow: 0 3px 6px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: center; height: 100px; }
+        .p-card:active { transform: scale(0.95); background: #f0fcf5; }
+        .p-card b { font-size: 15px; margin-bottom: 5px; color: #333; }
+        .p-card span { font-size: 13px; color: var(--p); font-weight: 700; }
+
+        /* 購物車區塊 */
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #eee; padding: 15px 20px; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); }
+        .cart-preview { max-height: 40px; overflow-y: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: #888; margin-bottom: 10px; }
+        .cart-summary { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 12px; }
         
-        /* 確保管理員功能在解鎖後明顯可見 */
-        .admin-data { display: none; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 5px; font-size: 14px; }
-        
-        .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
-        .nav-btn { padding: 8px 18px; background: #eee; border: none; border-radius: 20px; white-space: nowrap; }
-        #main-grid { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 160px; }
-        .items-flex { display: flex; flex-wrap: wrap; gap: 8px; }
-        .p-card { width: calc(33.33% - 6px); min-height: 100px; background: #fff; border-radius: 12px; text-align: center; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: center; }
-        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; padding: 12px; box-sizing: border-box; }
-        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 9500; display: none; padding: 20px; overflow-y: auto; }
+        /* 管理後台 */
+        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 9500; display: none; padding: 25px; overflow-y: auto; }
+        .admin-stat-card { background: #f0fcf5; border: 1px solid #d1f2e1; padding: 20px; border-radius: 18px; margin-bottom: 20px; display: none; } /* 密碼驗證後才顯現 */
+        .modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); display: none; align-items: center; justify-content: center; z-index: 10000; padding: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="boot-screen"><h2>系統載入中...</h2></div>
+    <div id="boot-screen"><div class="spinner"></div><p>系統載入中...</p></div>
 
     <!-- 分店登入 -->
     <div id="store-login" class="full-screen-center" style="display:none;">
         <div class="login-card">
-            <h2 style="color:var(--p)">分店系統登入</h2>
-            <input type="text" id="store-acc" placeholder="帳號 Email">
-            <input type="password" id="store-pw" placeholder="密碼">
-            <button class="btn-main" onclick="POS.storeLogin()">開啟裝置</button>
+            <h2 style="color:var(--p); margin-top:0;">分店登入</h2>
+            <input type="text" id="store-acc" placeholder="Email">
+            <input type="password" id="store-pw" placeholder="Password">
+            <button class="btn-main" onclick="POS.storeLogin()">確認進入</button>
         </div>
     </div>
 
-    <!-- 員工登入 -->
+    <!-- 員工代碼 -->
     <div id="staff-login" class="full-screen-center" style="display:none;">
         <div class="login-card">
-            <h2 style="color:var(--p)">員工登入</h2>
-            <input type="password" id="staff-code" placeholder="請輸入代碼" style="font-size:30px; text-align:center;">
-            <button class="btn-main" onclick="POS.staffLogin()">進入介面</button>
+            <h2 style="color:var(--p); margin-top:0;">員工登入</h2>
+            <input type="password" id="staff-code" placeholder="請輸入 3 碼代碼" pattern="[0-9]*" inputmode="numeric" style="font-size:32px; text-align:center; letter-spacing:10px;">
+            <button class="btn-main" onclick="POS.staffLogin()">進入系統</button>
+            <p onclick="firebase.auth().signOut()" style="margin-top:25px; color:#bbb; font-size:13px;">登出分店帳號</p>
         </div>
     </div>
 
     <!-- POS 主介面 -->
     <div id="pos-screen">
         <header>
-            <div id="revenue-box" class="admin-data">今日: <b id="st-sum">$0</b> (<span id="st-count">0</span>杯)</div>
-            <div>員工: <span id="current-staff-name">...</span></div>
-            <div style="display:flex; gap:5px;">
-                <button class="admin-data" onclick="POS.exportCSV()" style="border:none; color:white;">匯出報表</button>
-                <button onclick="POS.staffLogout()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:5px 10px; border-radius:5px;">交班</button>
+            <div class="header-info">
+                <span id="current-staff-name" style="font-weight:600;">...</span>
+                <!-- 老闆視角才會出現的今日數據 -->
+                <div id="boss-revenue-tag" class="revenue-tag">今日: <span id="st-sum">$0</span> (<span id="st-count">0</span>杯)</div>
             </div>
+            <button onclick="location.reload()" style="background:rgba(255,255,255,0.2); border:none; color:white; padding:6px 12px; border-radius:8px; font-size:13px;">交班</button>
         </header>
 
         <div class="nav-bar" id="nav-tabs"></div>
         <div id="main-grid"></div>
 
         <div class="cart-bar">
-            <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-                <span>🛒 已選: <b id="cart-count">0</b></span>
-                <span>總計: <b style="color:var(--s); font-size:20px;">$<span id="total-val">0</span></b></span>
+            <div class="cart-preview" id="cart-list-text">尚未點餐...</div>
+            <div class="cart-summary">
+                <span>🛒 數量: <b id="cart-count">0</b></span>
+                <span>總計 <b style="color:var(--s); font-size:24px;">$<span id="total-val">0</span></b></span>
             </div>
-            <div style="display:flex; gap:10px;">
-                <button onclick="POS.openChangeModal()" style="flex:3;" class="btn-main">確認結帳</button>
-                <button onclick="POS.openAdmin()" style="flex:1; background:#eee; border:none; border-radius:10px;">⚙️</button>
+            <div style="display:flex; gap:12px;">
+                <button onclick="POS.openCheckout()" style="flex:4;" class="btn-main">確認結帳</button>
+                <button onclick="POS.openAdmin()" style="flex:1; background:#f0f0f0; border:none; border-radius:12px; font-size:20px;">⚙️</button>
             </div>
         </div>
     </div>
 
-    <!-- 後台管理 -->
+    <!-- 管理後台 -->
     <div id="admin-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h2>管理後台</h2>
-            <button onclick="document.getElementById('admin-screen').style.display='none'">關閉</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h2 style="margin:0;">管理後台</h2>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">關閉</button>
         </div>
         
-        <div style="background:#f0f0f0; padding:15px; border-radius:10px; margin:15px 0;">
-            <h3>📊 營收統計 (今日)</h3>
-            <p>總營業額：<span id="admin-revenue" style="font-size:20px; font-weight:bold; color:var(--p)">$0</span></p>
-            <p>總銷售杯數：<span id="admin-count" style="font-size:20px; font-weight:bold;">0</span> 杯</p>
-            <button onclick="POS.exportCSV()" style="width:100%; padding:10px; background:var(--p); color:white; border:none; border-radius:5px;">下載 Excel (CSV) 報表</button>
+        <!-- 敏感數據區塊：輸入密碼後才顯示 -->
+        <div id="admin-stat-card" class="admin-stat-card">
+            <h3 style="margin-top:0;">📊 今日營業統計</h3>
+            <div style="display:flex; justify-content:space-between; font-size:18px; margin-bottom:10px;">
+                <span>總營業額：</span><b id="admin-rev" style="color:var(--p)">$0</b>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-size:18px; margin-bottom:15px;">
+                <span>今日杯數：</span><b id="admin-cnt">0 杯</b>
+            </div>
+            <button onclick="POS.exportCSV()" style="width:100%; padding:14px; background:var(--p); color:white; border:none; border-radius:10px; font-weight:bold;">📥 匯出 Excel 報表</button>
         </div>
 
-        <div style="border-top:1px solid #ddd; padding-top:15px;">
-            <h3>👥 員工帳號管理</h3>
+        <div>
+            <h3>👥 員工管理</h3>
             <div id="staff-list-editor"></div>
-            <button onclick="POS.addStaff()" style="width:100%; margin-top:10px; padding:10px;">＋ 新增員工</button>
-        </div>
-
-        <div style="border-top:1px solid #ddd; margin-top:20px; padding-top:15px;">
-            <h3>📋 菜單編輯</h3>
-            <button onclick="POS.addCat()" style="width:100%; padding:15px; background:var(--s); color:white; border:none; border-radius:10px;">＋ 新增分類</button>
-            <div id="editor" style="margin-top:15px;"></div>
+            <button onclick="POS.addStaff()" style="width:100%; margin-top:10px; padding:12px; border:1.5px dashed #ccc; background:none; border-radius:10px;">＋ 新增員工</button>
         </div>
     </div>
 
-    <!-- 結帳彈窗省略 (保留原本邏輯) -->
-    <div id="change-modal" class="full-screen-center" style="display:none; background:rgba(0,0,0,0.6); z-index:10000;">
+    <!-- 結帳彈窗 -->
+    <div id="checkout-modal" class="modal">
         <div class="login-card">
-            <h3 id="modal-total">應收: $0</h3>
-            <input type="number" id="cash-in" placeholder="顧客支付" style="font-size:24px; text-align:center;">
-            <div id="change-val" style="font-size:32px; font-weight:bold; color:#e74c3c; margin:15px 0;">$0</div>
-            <button onclick="POS.checkout()" class="btn-main">完成結帳</button>
-            <button onclick="document.getElementById('change-modal').style.display='none'" style="margin-top:10px; border:none; background:none; color:#666;">取消</button>
+            <h3 id="modal-total" style="font-size:20px; margin-top:0;">應收: $0</h3>
+            <input type="number" id="cash-in" placeholder="輸入金額" style="font-size:28px; text-align:center;" inputmode="numeric">
+            <div style="margin:15px 0;">
+                <span style="color:#666;">找零：</span>
+                <span id="change-val" style="font-size:32px; font-weight:bold; color:#e74c3c;">$0</span>
+            </div>
+            <button onclick="POS.doCheckout()" class="btn-main">完成結帳</button>
+            <button onclick="document.getElementById('checkout-modal').style.display='none'" style="margin-top:15px; border:none; background:none; color:#999;">取消</button>
         </div>
     </div>
 
@@ -130,8 +160,7 @@
                 messagingSenderId: "84807565645",
                 appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
             },
-            storeID: "", isAdminAccount: false,
-            inv: [], sales: [], cart: [], staffList: [], currentStaff: null,
+            storeID: "", inv: [], sales: [], cart: [], staffList: [], currentStaff: null,
 
             init() {
                 if (!firebase.apps.length) firebase.initializeApp(this.config);
@@ -140,12 +169,13 @@
                     if (user) {
                         const email = user.email.toLowerCase();
                         this.storeID = email.split("@")[0].replace(/\./g, "_");
-                        // 這裡可以改成 true 讓所有人都看得到，或維持 admin 判斷
-                        this.isAdminAccount = email.includes("admin") || email.includes("boss");
                         this.startSync();
-                        this.showStaffLogin();
+                        document.getElementById("store-login").style.display = "none";
+                        document.getElementById("staff-login").style.display = "flex";
                     } else {
                         document.getElementById("store-login").style.display = "flex";
+                        document.getElementById("staff-login").style.display = "none";
+                        document.getElementById("pos-screen").style.display = "none";
                     }
                 });
             },
@@ -155,15 +185,12 @@
                 firebase.auth().signInWithEmailAndPassword(a, p).catch(e => alert("登入失敗: " + e.message));
             },
 
-            showStaffLogin() { 
-                document.getElementById("store-login").style.display = "none"; 
-                document.getElementById("staff-login").style.display = "flex"; 
-            },
-
             startSync() {
                 const db = firebase.database();
                 db.ref(`global_menu/inventory`).on("value", s => { this.inv = s.val() || []; this.renderGrid(); });
-                db.ref(`stores/${this.storeID}/staff`).on("value", s => { this.staffList = s.val() || [{name:"預設員工", code:"1234"}]; });
+                db.ref(`stores/${this.storeID}/staff`).on("value", s => { 
+                    this.staffList = s.val() || [{name: "老闆", code: "888"}]; 
+                });
                 
                 const today = new Date().toISOString().split('T')[0];
                 db.ref(`stores/${this.storeID}/sales/${today}`).on("value", s => {
@@ -177,90 +204,64 @@
                 const found = this.staffList.find(s => s.code === code);
                 if (found) {
                     this.currentStaff = found;
-                    document.getElementById("current-staff-name").innerText = found.name;
+                    document.getElementById("current-staff-name").innerText = "員工: " + found.name;
                     document.getElementById("staff-login").style.display = "none";
                     document.getElementById("pos-screen").style.display = "flex";
-                    this.applyUIPerms();
-                } else { alert("員工代碼錯誤"); }
+                } else { alert("代碼錯誤"); }
             },
 
-            staffLogout() { location.reload(); },
-
-            applyUIPerms() {
-                // 如果是管理員帳號，則顯示報表相關 UI
-                const display = this.isAdminAccount ? 'block' : 'none';
-                document.querySelectorAll('.admin-data').forEach(el => el.style.display = display);
-            },
-
-            updateRevenueUI() {
-                let sum = 0;
-                this.sales.forEach(s => sum += (s.p || 0));
-                // 更新頂部顯示
-                document.getElementById("st-sum").innerText = "$" + sum;
-                document.getElementById("st-count").innerText = this.sales.length;
-                // 更新後台顯示
-                if(document.getElementById("admin-revenue")) {
-                    document.getElementById("admin-revenue").innerText = "$" + sum;
-                    document.getElementById("admin-count").innerText = this.sales.length;
-                }
-            },
-
-            exportCSV() {
-                if(this.sales.length === 0) return alert("今日尚無銷售數據");
-                let csv = "\uFEFF時間,員工,品項,金額\n";
-                this.sales.forEach(s => {
-                    csv += `${s.time},${s.staff},${s.n},${s.p}\n`;
-                });
-                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `小森檸報表_${this.storeID}_${new Date().toLocaleDateString()}.csv`;
-                link.click();
-            },
-
-            // 菜單與員工管理邏輯與之前相同，略作優化
-            renderGrid() { /* ... 同前 ... */ },
-            openAdmin() {
-                if (prompt("請輸入管理密碼") === "8888") {
-                    document.getElementById("admin-screen").style.display = "block";
-                    this.renderStaffList();
-                    this.renderEditor();
-                }
-            },
-            /* 這裡補齊 renderGrid, addCart, openChangeModal, checkout 等之前功能的函數體 */
             renderGrid() {
                 const tabs = document.getElementById("nav-tabs"), grid = document.getElementById("main-grid");
                 tabs.innerHTML = ""; grid.innerHTML = "";
                 this.inv.forEach((c, ci) => {
-                    tabs.innerHTML += `<button class="nav-btn" onclick="document.getElementById('c-${ci}').scrollIntoView()">${c.cat}</button>`;
-                    let h = `<div id="c-${ci}"><h3>${c.cat}</h3><div class="items-flex">`;
+                    const btn = document.createElement("button");
+                    btn.className = "nav-btn" + (ci === 0 ? " active" : "");
+                    btn.innerText = c.cat;
+                    btn.onclick = (e) => {
+                        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+                        e.target.classList.add('active');
+                        document.getElementById(`c-${ci}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    };
+                    tabs.appendChild(btn);
+
+                    let h = `<div id="c-${ci}" class="category-sec"><div class="category-title">${c.cat}</div><div class="items-flex">`;
                     (c.items || []).forEach(it => {
-                        h += `<div class="p-card" onclick="POS.addCart('${it.id}')"><b>${it.n}</b>$${it.p}</div>`;
+                        h += `<div class="p-card" onclick="POS.addCart('${it.id}')"><b>${it.n}</b><span>$${it.p}</span></div>`;
                     });
                     grid.innerHTML += h + `</div></div>`;
                 });
             },
+
             addCart(id) {
                 this.inv.forEach(c => (c.items || []).forEach(it => {
                     if(it.id == id) { this.cart.push({...it}); this.updateCartUI(); }
                 }));
             },
+
             updateCartUI() {
-                let t = 0; this.cart.forEach(i => t += i.p);
+                let t = 0; 
+                this.cart.forEach(i => t += i.p);
                 document.getElementById("cart-count").innerText = this.cart.length;
                 document.getElementById("total-val").innerText = t;
+                document.getElementById("cart-list-text").innerText = this.cart.map(i => i.n).join(", ") || "尚未點餐...";
             },
-            openChangeModal() {
+
+            openCheckout() {
                 if(this.cart.length === 0) return;
                 const total = parseInt(document.getElementById("total-val").innerText);
                 document.getElementById("modal-total").innerText = "應收: $" + total;
-                document.getElementById("change-modal").style.display = "flex";
-                document.getElementById("cash-in").oninput = () => {
-                    const cash = Number(document.getElementById("cash-in").value) || 0;
+                document.getElementById("checkout-modal").style.display = "flex";
+                const cashInput = document.getElementById("cash-in");
+                cashInput.value = "";
+                document.getElementById("change-val").innerText = "$0";
+                cashInput.focus();
+                cashInput.oninput = () => {
+                    const cash = Number(cashInput.value) || 0;
                     document.getElementById("change-val").innerText = "$" + Math.max(0, cash - total);
                 };
             },
-            checkout() {
+
+            doCheckout() {
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
                 this.cart.forEach(it => {
@@ -269,42 +270,56 @@
                     });
                 });
                 this.cart = []; this.updateCartUI();
-                document.getElementById("change-modal").style.display = "none";
+                document.getElementById("checkout-modal").style.display = "none";
                 alert("結帳完成！");
             },
+
+            openAdmin() {
+                const pw = prompt("管理密碼");
+                if (pw === "8888") { // 您可以改為您的專屬密碼
+                    document.getElementById("admin-screen").style.display = "block";
+                    document.getElementById("boss-revenue-tag").style.display = "block"; // 主介面解鎖顯示營收
+                    document.getElementById("admin-stat-card").style.display = "block"; // 後台顯示營收
+                    this.renderStaffList();
+                } else { alert("密碼錯誤"); }
+            },
+
+            updateRevenueUI() {
+                let sum = 0;
+                this.sales.forEach(s => sum += (s.p || 0));
+                document.getElementById("st-sum").innerText = "$" + sum;
+                document.getElementById("st-count").innerText = this.sales.length;
+                if(document.getElementById("admin-rev")) {
+                    document.getElementById("admin-rev").innerText = "$" + sum;
+                    document.getElementById("admin-cnt").innerText = this.sales.length + " 杯";
+                }
+            },
+
+            exportCSV() {
+                if(this.sales.length === 0) return alert("尚無資料");
+                let csv = "\uFEFF時間,員工,品項,金額\n";
+                this.sales.forEach(s => csv += `${s.time},${s.staff},${s.n},${s.p}\n`);
+                const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+                const a = document.createElement("a");
+                a.href = URL.createObjectURL(blob);
+                a.download = `小森檸報表_${this.storeID}.csv`;
+                a.click();
+            },
+
             renderStaffList() {
                 const box = document.getElementById("staff-list-editor");
                 let h = "";
                 this.staffList.forEach((s, si) => {
-                    h += `<div style="display:flex; gap:5px; margin-bottom:5px;">
-                        <input type="text" value="${s.name}" style="flex:2;" onchange="POS.staffList[${si}].name=this.value;POS.saveStaff()">
-                        <input type="text" value="${s.code}" style="flex:1;" onchange="POS.staffList[${si}].code=this.value;POS.saveStaff()">
-                        <button onclick="POS.staffList.splice(${si},1);POS.saveStaff();POS.renderStaffList()">✕</button>
+                    h += `<div style="display:flex; gap:8px; margin-bottom:10px;">
+                        <input type="text" value="${s.name}" style="flex:2; margin:0;" onchange="POS.staffList[${si}].name=this.value;POS.saveStaff()">
+                        <input type="text" value="${s.code}" style="flex:1; margin:0;" onchange="POS.staffList[${si}].code=this.value;POS.saveStaff()">
+                        <button onclick="POS.staffList.splice(${si},1);POS.saveStaff();POS.renderStaffList()" style="border:none;background:#ffeded;color:red;border-radius:8px;padding:0 15px;">✕</button>
                     </div>`;
                 });
                 box.innerHTML = h;
             },
-            addStaff() { this.staffList.push({name:"新員工", code:"0000"}); this.saveStaff(); this.renderStaffList(); },
             saveStaff() { firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staffList); },
-            renderEditor() {
-                const box = document.getElementById("editor"); let h = "";
-                this.inv.forEach((c, ci) => {
-                    h += `<div style="background:#eee;padding:10px;margin-bottom:10px;border-radius:10px;">
-                        <input type="text" value="${c.cat}" onchange="POS.inv[${ci}].cat=this.value;POS.saveInv()">
-                        <div>`;
-                    (c.items || []).forEach((it, ii) => {
-                        h += `<div style="display:flex;gap:5px;margin-top:5px;">
-                            <input type="text" value="${it.n}" style="flex:2;" onchange="POS.inv[${ci}].items[${ii}].n=this.value;POS.saveInv()">
-                            <input type="number" value="${it.p}" style="flex:1;" onchange="POS.inv[${ci}].items[${ii}].p=Number(this.value);POS.saveInv()">
-                            <button onclick="POS.inv[${ci}].items.splice(${ii},1);POS.saveInv();POS.renderEditor()">✕</button>
-                        </div>`;
-                    });
-                    h += `</div><button onclick="if(!POS.inv[${ci}].items)POS.inv[${ci}].items=[]; POS.inv[${ci}].items.push({id:Date.now(),n:'新商品',p:50});POS.saveInv();POS.renderEditor()">＋</button></div>`;
-                });
-                box.innerHTML = h;
-            },
-            saveInv() { firebase.database().ref(`global_menu/inventory`).set(this.inv); },
-            addCat() { const n = prompt("分類名稱"); if(n){ this.inv.push({cat:n, items:[]}); this.saveInv(); this.renderEditor(); } }
+            addStaff() { this.staffList.push({name: "新員工", code: "000"}); this.saveStaff(); this.renderStaffList(); }
         };
         window.onload = () => POS.init();
     </script>
