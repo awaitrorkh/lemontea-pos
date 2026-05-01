@@ -3,64 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 完整功能版</title>
+    <title>小森檸　POS 系統</title>
     
-    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 
     <style>
-        :root { --p: #27ae60; --p-dark: #219150; --s: #e67e22; --bg: #f8f9fa; --text: #2c3e50; }
+        :root { --p: #27ae60; --s: #e67e22; --bg: #f8f9fa; --text: #2c3e50; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
-        body { font-family: -apple-system, "Helvetica Neue", sans-serif; background: var(--bg); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        body { font-family: -apple-system, sans-serif; background: var(--bg); height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
         
-        /* 頂部導航：純淨化，留給員工名與營收 */
-        header { background: var(--p); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; min-height: 60px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .revenue-tag { background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 8px; font-size: 14px; font-weight: bold; display: none; }
+        /* 頂部導航 */
+        header { background: var(--p); color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; min-height: 60px; }
+        .revenue-tag { background: rgba(0,0,0,0.2); padding: 5px 12px; border-radius: 8px; font-size: 13px; font-weight: bold; display: none; }
 
         /* 分類導航 */
         .nav-bar { display: flex; gap: 10px; overflow-x: auto; padding: 12px 15px; background: #fff; border-bottom: 1px solid #eee; flex-shrink: 0; }
-        .nav-btn { padding: 8px 20px; background: #f2f2f2; border: none; border-radius: 25px; white-space: nowrap; font-weight: 600; font-size: 14px; color: #666; transition: 0.2s; }
+        .nav-btn { padding: 8px 20px; background: #f2f2f2; border: none; border-radius: 25px; white-space: nowrap; font-weight: 600; font-size: 14px; }
         .nav-btn.active { background: var(--p); color: #fff; }
 
         /* 商品區 */
-        #main-grid { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 300px; scroll-behavior: smooth; }
-        .category-title { font-size: 18px; font-weight: bold; margin: 20px 0 10px 5px; padding-left: 10px; border-left: 6px solid var(--p); color: var(--text); }
-        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-        .p-card { background: #fff; padding: 15px 5px; border-radius: 18px; text-align: center; border: 1px solid rgba(0,0,0,0.05); box-shadow: 0 4px 10px rgba(0,0,0,0.03); height: 100px; display: flex; flex-direction: column; justify-content: center; transition: 0.1s; cursor: pointer; }
-        .p-card:active { transform: scale(0.92); background: #f0fcf5; border-color: var(--p); }
-        .p-card b { font-size: 15px; margin-bottom: 6px; color: #333; display: block; }
+        #main-grid { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 320px; }
+        .category-title { font-size: 18px; font-weight: bold; margin: 20px 0 10px 5px; padding-left: 10px; border-left: 6px solid var(--p); }
+        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+        .p-card { background: #fff; padding: 15px 5px; border-radius: 18px; text-align: center; border: 1px solid rgba(0,0,0,0.05); height: 95px; display: flex; flex-direction: column; justify-content: center; }
+        .p-card:active { transform: scale(0.92); background: #f0fcf5; }
+        .p-card b { font-size: 14px; margin-bottom: 5px; }
         .p-card span { font-size: 13px; color: var(--p); font-weight: 800; }
 
         /* 底部結帳區 */
-        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 2px solid #eee; padding: 15px 20px 35px 20px; box-shadow: 0 -8px 25px rgba(0,0,0,0.08); z-index: 1000; }
-        
-        /* 刪減功能：標籤容器 */
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 2px solid #eee; padding: 15px 20px 30px 20px; box-shadow: 0 -8px 25px rgba(0,0,0,0.08); z-index: 1000; }
         .cart-list-wrapper { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 15px; padding: 5px 0; min-height: 50px; align-items: center; border-bottom: 1px dashed #eee; }
-        .cart-item-tag { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; padding: 7px 14px; border-radius: 10px; font-size: 14px; white-space: nowrap; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; animation: fadeIn 0.2s; }
-        .cart-item-tag:active { background: #f5222d; color: white; }
-        .cart-item-tag::after { content: '✕'; font-weight: bold; font-size: 11px; background: #f5222d; color: white; border-radius: 50%; width: 18px; height: 18px; display: flex; align-items: center; justify-content: center; }
+        .cart-item-tag { background: #fff1f0; color: #f5222d; border: 1px solid #ffa39e; padding: 7px 14px; border-radius: 10px; font-size: 13px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+        .cart-item-tag::after { content: '✕'; font-weight: bold; font-size: 10px; background: #f5222d; color: white; border-radius: 50%; width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; }
 
         .cart-summary { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 15px; }
-        .total-price { color: var(--s); font-size: 32px; font-weight: 900; font-family: 'Arial'; }
-        
-        /* 按鈕組 */
-        .btn-group { display: flex; gap: 12px; height: 60px; }
-        .btn-main { background: var(--p); color: #fff; border: none; padding: 0 20px; border-radius: 15px; font-weight: bold; flex: 2; font-size: 20px; box-shadow: 0 4px 12px rgba(39,174,96,0.3); }
-        .btn-main:active { transform: translateY(2px); box-shadow: none; }
-        
-        /* 交班按鈕樣式 */
-        .btn-logout { background: #f8f9fa; border: 1px solid #ddd; border-radius: 15px; flex: 1; font-size: 15px; color: #666; font-weight: bold; cursor: pointer; }
-        .btn-side { background: #f8f9fa; border: 1px solid #ddd; border-radius: 15px; width: 60px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; }
+        .btn-group { display: flex; gap: 10px; height: 55px; }
+        .btn-main { background: var(--p); color: #fff; border: none; border-radius: 12px; font-weight: bold; flex: 2; font-size: 18px; }
+        .btn-logout { background: #f8f9fa; border: 1px solid #ddd; border-radius: 12px; flex: 1; font-size: 14px; color: #666; font-weight: bold; }
+        .btn-side { background: #f8f9fa; border: 1px solid #ddd; border-radius: 12px; width: 55px; display: flex; align-items: center; justify-content: center; font-size: 20px; }
+
+        /* 後台管理介面 */
+        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 2000; display: none; overflow-y: auto; padding: 20px; }
+        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #eee; }
+        .stat-card { background: var(--p); color: white; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .admin-section { background: #f9f9f9; padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #eee; }
+        .admin-section h3 { margin-bottom: 10px; font-size: 16px; color: #333; }
+        .admin-row { display: flex; gap: 8px; margin-bottom: 10px; }
+        input, select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; flex: 1; outline: none; }
+        .list-item { background: #fff; padding: 10px; border-radius: 8px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #eee; font-size: 14px; }
+        .btn-add { background: var(--p); color: white; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; }
+        .btn-del { background: #ff4d4f; color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 12px; }
+        .btn-export { background: var(--s); color: white; border: none; padding: 15px; border-radius: 12px; font-weight: bold; width: 100%; font-size: 16px; margin-bottom: 20px; }
 
         /* 登入畫面 */
-        #staff-login { position: fixed; inset: 0; background: var(--bg); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 20px; }
-        .login-card { background: #fff; padding: 40px 30px; border-radius: 30px; width: 100%; max-width: 380px; text-align: center; box-shadow: 0 15px 40px rgba(0,0,0,0.1); }
-        input[type="password"] { font-size: 40px; text-align: center; letter-spacing: 12px; width: 100%; padding: 15px; border-radius: 15px; border: 2px solid #eee; margin: 25px 0; outline: none; background: #fafafa; }
-        input[type="password"]:focus { border-color: var(--p); background: #fff; }
-
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        #staff-login { position: fixed; inset: 0; background: var(--bg); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: #fff; padding: 40px 30px; border-radius: 30px; width: 100%; max-width: 360px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body>
@@ -68,46 +67,75 @@
     <!-- 員工登入層 -->
     <div id="staff-login">
         <div class="login-card">
-            <h1 style="color:var(--p); font-size: 28px; margin-bottom: 5px;">小森檸 & 泰奶</h1>
-            <p style="color:#999; font-size:15px;">MANAGER SYSTEM</p>
-            <input type="password" id="staff-code" placeholder="••••" maxlength="4" inputmode="numeric">
-            <button class="btn-main" style="width:100%;" onclick="POS.staffLogin()">進入系統</button>
+            <h1 style="color:var(--p); margin-bottom:20px;">小森檸 POS</h1>
+            <input type="password" id="staff-code" placeholder="請輸入代碼" maxlength="4" style="font-size:30px; text-align:center; letter-spacing:10px; margin-bottom:20px;">
+            <button class="btn-main" style="width:100%;" onclick="POS.staffLogin()">登入</button>
         </div>
     </div>
 
     <!-- POS 主畫面 -->
     <div id="pos-screen" style="display:none; flex-direction:column; height:100vh;">
         <header>
-            <span id="current-staff-name" style="font-weight:bold; font-size:18px;">員工載入中...</span>
-            <div id="boss-revenue-tag" class="revenue-tag">今日營收: <span id="st-sum">$0</span></div>
+            <span id="current-staff-name" style="font-weight:bold;">載入中...</span>
+            <!-- 修正：即時顯示金額與杯數 -->
+            <div id="boss-revenue-tag" class="revenue-tag">
+                今日: $<span id="st-sum">0</span> (<span id="st-count">0</span>杯)
+            </div>
         </header>
 
-        <!-- 商品分類 -->
         <div class="nav-bar" id="nav-tabs"></div>
+        <div id="main-grid"></div>
 
-        <!-- 商品格線區域 -->
-        <div id="main-grid">
-            <p style="text-align:center; color:#999; margin-top:50px;">同步資料中...</p>
-        </div>
-
-        <!-- 底部結帳與功能區 -->
         <div class="cart-bar">
-            <!-- 刪減標籤區 (點擊即刪除) -->
-            <div class="cart-list-wrapper" id="cart-list-ui">
-                <span style="color:#bbb; font-size:14px;">尚未選取品項...</span>
-            </div>
-            
+            <div class="cart-list-wrapper" id="cart-list-ui"></div>
             <div class="cart-summary">
-                <span style="font-size:15px; color:#777;">已選 <b id="cart-count" style="color:var(--text); font-size:20px;">0</b> 杯</span>
-                <span style="font-weight:bold; color:var(--text);">總計 <span class="total-price">$<span id="total-val">0</span></span></span>
+                <span style="font-size:14px; color:#666;">🛒 <b id="cart-count">0</b> 杯</span>
+                <span style="font-weight:bold; font-size:24px; color:var(--s);">$<span id="total-val">0</span></span>
             </div>
-            
             <div class="btn-group">
                 <button onclick="POS.doCheckout()" class="btn-main">確認結帳</button>
-                <!-- 交班按鈕移位至此 -->
                 <button onclick="location.reload()" class="btn-logout">交班</button>
                 <button onclick="POS.openAdmin()" class="btn-side">⚙️</button>
             </div>
+        </div>
+    </div>
+
+    <!-- 管理後台 -->
+    <div id="admin-screen">
+        <div class="admin-header">
+            <h2>管理後台</h2>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:none; font-size:24px;">✕</button>
+        </div>
+
+        <div class="stat-card">
+            <p>今日總營收</p>
+            <h1 id="ad-sum">$0</h1>
+            <p style="margin-top:10px;">今日總杯數：<span id="ad-count">0</span> 杯</p>
+        </div>
+
+        <button class="btn-export" onclick="POS.exportCSV()">📊 匯出今日報表 (CSV)</button>
+
+        <!-- 員工管理 -->
+        <div class="admin-section">
+            <h3>員工管理</h3>
+            <div class="admin-row">
+                <input type="text" id="new-staff-name" placeholder="姓名">
+                <input type="text" id="new-staff-code" placeholder="代碼" maxlength="4">
+                <button class="btn-add" onclick="POS.addStaff()">新增</button>
+            </div>
+            <div id="staff-manager-list"></div>
+        </div>
+
+        <!-- 品項管理 -->
+        <div class="admin-section">
+            <h3>品項管理</h3>
+            <div class="admin-row" style="flex-wrap: wrap;">
+                <input type="text" id="new-p-cat" placeholder="種類(如:泰奶)" style="flex: 1 1 100%; margin-bottom:5px;">
+                <input type="text" id="new-p-name" placeholder="名稱">
+                <input type="number" id="new-p-price" placeholder="價格">
+                <button class="btn-add" onclick="POS.addItem()">新增</button>
+            </div>
+            <div id="item-manager-list"></div>
         </div>
     </div>
 
@@ -119,30 +147,36 @@
                 databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
                 projectId: "lemontea-ad44d"
             },
-            inv: [], 
-            cart: [], 
-            // 預設員工資料 (實際應用中可由 Firebase 讀取)
-            staffList: [
-                {name: "店長", code: "8888"}, 
-                {name: "小森", code: "1234"},
-                {name: "新員工", code: "0000"}
-            ],
+            storeID: "LittleForest_Central", // 建議之後根據登入帳號動態抓取
+            inv: [], cart: [], staffList: [], sales: [], currentStaff: null,
 
             init() {
-                if (!firebase.apps.length) firebase.initializeApp(this.config);
+                firebase.initializeApp(this.config);
                 this.startSync();
-                // 監聽鍵盤 Enter 事件
-                document.getElementById("staff-code").addEventListener("keyup", (e) => {
-                    if (e.key === "Enter") this.staffLogin();
-                });
             },
 
             startSync() {
                 const db = firebase.database();
-                // 讀取選單
-                db.ref(`global_menu/inventory`).on("value", s => { 
-                    this.inv = s.val() || []; 
-                    this.renderGrid(); 
+                const today = new Date().toISOString().split('T')[0];
+
+                // 同步品項
+                db.ref(`stores/${this.storeID}/inventory`).on("value", s => {
+                    this.inv = s.val() || [];
+                    this.renderGrid();
+                    this.renderAdminItems();
+                });
+
+                // 同步員工
+                db.ref(`stores/${this.storeID}/staff`).on("value", s => {
+                    this.staffList = s.val() || [{name: "店長", code: "8888"}];
+                    this.renderAdminStaff();
+                });
+
+                // 同步今日銷售
+                db.ref(`stores/${this.storeID}/sales/${today}`).on("value", s => {
+                    const data = s.val() || {};
+                    this.sales = Object.values(data);
+                    this.updateRevenueUI();
                 });
             },
 
@@ -150,118 +184,172 @@
                 const code = document.getElementById("staff-code").value;
                 const found = this.staffList.find(s => s.code === code);
                 if (found) {
-                    document.getElementById("current-staff-name").innerText = "👤 員工: " + found.name;
+                    this.currentStaff = found;
+                    document.getElementById("current-staff-name").innerText = "👤 " + found.name;
                     document.getElementById("staff-login").style.display = "none";
                     document.getElementById("pos-screen").style.display = "flex";
-                } else { 
-                    alert("員工代碼錯誤，請重新輸入！"); 
-                    document.getElementById("staff-code").value = "";
-                }
+                } else { alert("代碼錯誤！"); }
             },
 
             renderGrid() {
                 const tabs = document.getElementById("nav-tabs"), grid = document.getElementById("main-grid");
                 tabs.innerHTML = ""; grid.innerHTML = "";
-                
-                if(this.inv.length === 0) {
-                    grid.innerHTML = '<p style="text-align:center; padding:20px; color:#999;">選單為空，請檢查後台設定。</p>';
-                    return;
-                }
-
                 this.inv.forEach((c, ci) => {
-                    // 分類按鈕
                     const btn = document.createElement("button");
                     btn.className = "nav-btn" + (ci === 0 ? " active" : "");
                     btn.innerText = c.cat;
                     btn.onclick = (e) => {
                         document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
                         e.target.classList.add('active');
-                        document.getElementById(`category-${ci}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        document.getElementById(`c-${ci}`).scrollIntoView({ behavior: 'smooth', block: 'start' });
                     };
                     tabs.appendChild(btn);
-
-                    // 商品內容
-                    let section = document.createElement("div");
-                    section.id = `category-${ci}`;
-                    let h = `<div class="category-title">${c.cat}</div><div class="items-flex">`;
+                    let h = `<div id="c-${ci}"><div class="category-title">${c.cat}</div><div class="items-flex">`;
                     (c.items || []).forEach(it => {
-                        h += `<div class="p-card" onclick="POS.addToCart('${it.n}', ${it.p})">
-                                <b>${it.n}</b>
-                                <span>$${it.p}</span>
-                              </div>`;
+                        h += `<div class="p-card" onclick="POS.addCart('${it.n}', ${it.p})"><b>${it.n}</b><span>$${it.p}</span></div>`;
                     });
-                    section.innerHTML = h + `</div>`;
-                    grid.appendChild(section);
+                    grid.innerHTML += h + `</div></div>`;
                 });
             },
 
-            // 點擊商品加入購物車
-            addToCart(name, price) {
-                const uniqueId = Date.now() + Math.random();
-                this.cart.push({ name, price, id: uniqueId });
-                this.updateCartUI();
-            },
-
-            // 點擊標籤刪除品項
-            removeFromCart(uniqueId) {
-                this.cart = this.cart.filter(item => item.id !== uniqueId);
+            addCart(n, p) {
+                this.cart.push({ n, p, id: Date.now() + Math.random() });
                 this.updateCartUI();
             },
 
             updateCartUI() {
                 const list = document.getElementById("cart-list-ui");
-                const totalVal = document.getElementById("total-val");
-                const countVal = document.getElementById("cart-count");
-                
                 list.innerHTML = "";
                 let total = 0;
-
-                if (this.cart.length === 0) {
-                    list.innerHTML = `<span style="color:#bbb; font-size:14px;">尚未選取品項...</span>`;
-                } else {
-                    this.cart.forEach(item => {
-                        total += item.price;
-                        const tag = document.createElement("div");
-                        tag.className = "cart-item-tag";
-                        tag.innerHTML = `${item.name}`;
-                        // 綁定點擊刪除事件
-                        tag.onclick = () => this.removeFromCart(item.id);
-                        list.appendChild(tag);
-                    });
-                    // 自動滾動到最右邊顯示最新品項
-                    list.scrollLeft = list.scrollWidth;
-                }
-
-                totalVal.innerText = total;
-                countVal.innerText = this.cart.length;
+                this.cart.forEach(item => {
+                    total += item.p;
+                    const tag = document.createElement("div");
+                    tag.className = "cart-item-tag";
+                    tag.innerText = item.n;
+                    tag.onclick = () => { this.cart = this.cart.filter(i => i.id !== item.id); this.updateCartUI(); };
+                    list.appendChild(tag);
+                });
+                document.getElementById("total-val").innerText = total;
+                document.getElementById("cart-count").innerText = this.cart.length;
             },
 
             doCheckout() {
-                if (this.cart.length === 0) return alert("購物車目前是空的喔！");
+                if (this.cart.length === 0) return;
+                const today = new Date().toISOString().split('T')[0];
+                const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+                const db = firebase.database();
                 
-                const total = document.getElementById("total-val").innerText;
-                const confirmPay = confirm(`確定結帳嗎？\n總杯數：${this.cart.length} 杯\n總金額：$${total}`);
-                
-                if(confirmPay) {
-                    // 這裡可以加入傳送到 Firebase 銷售紀錄的邏輯
-                    alert("結帳完成！");
-                    this.cart = [];
-                    this.updateCartUI();
-                }
+                this.cart.forEach(item => {
+                    db.ref(`stores/${this.storeID}/sales/${today}`).push({
+                        t: time,
+                        s: this.currentStaff.name,
+                        n: item.n,
+                        p: item.p
+                    });
+                });
+
+                alert("結帳成功！");
+                this.cart = [];
+                this.updateCartUI();
+            },
+
+            updateRevenueUI() {
+                const sum = this.sales.reduce((a, b) => a + b.p, 0);
+                const count = this.sales.length;
+                document.getElementById("st-sum").innerText = sum;
+                document.getElementById("st-count").innerText = count;
+                document.getElementById("ad-sum").innerText = "$" + sum;
+                document.getElementById("ad-count").innerText = count;
             },
 
             openAdmin() {
-                const pw = prompt("請輸入管理員密碼：");
+                const pw = prompt("請輸入管理密碼");
                 if (pw === "8888") {
+                    document.getElementById("admin-screen").style.display = "block";
                     document.getElementById("boss-revenue-tag").style.display = "block";
-                    alert("已開啟管理權限，現在頂部會顯示營業額。");
-                } else {
-                    alert("密碼不正確！");
+                }
+            },
+
+            // 匯出功能
+            exportCSV() {
+                const today = new Date().toISOString().split('T')[0];
+                let csv = "\uFEFF時間,員工,品項,金額\n";
+                this.sales.forEach(s => {
+                    csv += `${s.t},${s.s},${s.n},${s.p}\n`;
+                });
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                // 修正：自定義報表檔名
+                link.download = `小森檸報表_${this.storeID}_${today}.csv`;
+                link.click();
+            },
+
+            // 員工管理邏輯
+            renderAdminStaff() {
+                const list = document.getElementById("staff-manager-list");
+                list.innerHTML = "";
+                this.staffList.forEach((s, index) => {
+                    list.innerHTML += `<div class="list-item">
+                        <span>${s.name} (${s.code})</span>
+                        <button class="btn-del" onclick="POS.delStaff(${index})">刪除</button>
+                    </div>`;
+                });
+            },
+            addStaff() {
+                const name = document.getElementById("new-staff-name").value;
+                const code = document.getElementById("new-staff-code").value;
+                if (!name || !code) return alert("請填寫完整");
+                this.staffList.push({ name, code });
+                firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staffList);
+                document.getElementById("new-staff-name").value = "";
+                document.getElementById("new-staff-code").value = "";
+            },
+            delStaff(i) {
+                if (confirm("確定刪除？")) {
+                    this.staffList.splice(i, 1);
+                    firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staffList);
+                }
+            },
+
+            // 品項管理邏輯
+            renderAdminItems() {
+                const list = document.getElementById("item-manager-list");
+                list.innerHTML = "";
+                this.inv.forEach((c, ci) => {
+                    (c.items || []).forEach((it, ii) => {
+                        list.innerHTML += `<div class="list-item">
+                            <span>[${c.cat}] ${it.n} - $${it.p}</span>
+                            <button class="btn-del" onclick="POS.delItem(${ci}, ${ii})">刪除</button>
+                        </div>`;
+                    });
+                });
+            },
+            addItem() {
+                const cat = document.getElementById("new-p-cat").value;
+                const name = document.getElementById("new-p-name").value;
+                const price = parseInt(document.getElementById("new-p-price").value);
+                if (!cat || !name || !price) return alert("請填寫完整");
+
+                let category = this.inv.find(c => c.cat === cat);
+                if (!category) {
+                    category = { cat: cat, items: [] };
+                    this.inv.push(category);
+                }
+                category.items.push({ id: Date.now(), n: name, p: price });
+                firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv);
+                document.getElementById("new-p-name").value = "";
+                document.getElementById("new-p-price").value = "";
+            },
+            delItem(ci, ii) {
+                if (confirm("確定刪除品項？")) {
+                    this.inv[ci].items.splice(ii, 1);
+                    if (this.inv[ci].items.length === 0) this.inv.splice(ci, 1);
+                    firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv);
                 }
             }
         };
 
-        // 啟動 POS
         window.onload = () => POS.init();
     </script>
 </body>
