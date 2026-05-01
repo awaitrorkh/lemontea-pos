@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>小森檸 POS - 完整功能版</title>
+    <title>小森檸 POS - 排版修正版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -12,72 +12,80 @@
         :root { --p: #27ae60; --s: #e67e22; --bg: #f8faf9; --danger: #f5222d; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
         
+        /* 核心修正：強制 body 垂直佈局 */
         body { 
             height: 100vh; height: -webkit-fill-available; overflow: hidden; 
             background: var(--bg); font-family: -apple-system, "Noto Sans TC", sans-serif;
-            display: flex; flex-direction: column;
+            display: flex !important; flex-direction: column !important; 
         }
 
         header { 
-            background: var(--p); color: white; padding: 15px 20px; 
+            background: var(--p); color: white; padding: 12px 20px; 
             display: flex; justify-content: space-between; align-items: center; 
-            padding-top: env(safe-area-inset-top); flex-shrink: 0;
+            padding-top: env(safe-area-inset-top); flex-shrink: 0; width: 100%;
         }
 
-        /* 中間商品區：自動填滿並獨立捲動 */
+        /* 關鍵修正：確保商品區橫跨整個寬度且不被擠壓 */
+        #pos-screen {
+            display: flex !important; flex-direction: column !important; 
+            flex: 1; height: 100%; width: 100%; overflow: hidden;
+        }
+
         #main-grid { 
-            flex: 1; overflow-y: auto; padding: 12px; padding-bottom: 220px; 
+            flex: 1; overflow-y: auto; padding: 12px; 
+            width: 100%; /* 確保寬度佔滿 */
+            padding-bottom: 240px; /* 預留給底欄的空間 */
             -webkit-overflow-scrolling: touch; 
         }
 
-        .cat-section { margin-bottom: 20px; }
+        .cat-section { margin-bottom: 20px; clear: both; }
         .cat-name { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: #666; border-left: 4px solid var(--p); padding-left: 8px; }
-        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        
+        /* 商品網格 */
+        .items-flex { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+        }
         
         .p-card { 
-            background: #fff; padding: 10px 4px; border-radius: 12px; text-align: center; 
-            border: 1px solid rgba(0,0,0,0.05); min-height: 85px; 
+            background: #fff; padding: 12px 5px; border-radius: 12px; text-align: center; 
+            border: 1px solid rgba(0,0,0,0.06); min-height: 90px; 
             display: flex; flex-direction: column; justify-content: center; 
-            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.03);
         }
-        .p-card:active { background: #f0f0f0; transform: scale(0.96); }
-        .p-card b { font-size: 13px; color: #333; margin-bottom: 4px; }
+        .p-card b { font-size: 13px; color: #333; margin-bottom: 4px; display: block; }
         .p-card span { color: var(--p); font-weight: bold; font-size: 14px; }
 
-        /* 底部固定欄位 */
+        /* 底部固定結帳欄 */
         .cart-bar { 
-            position: fixed; bottom: 0; width: 100%; background: #fff; 
-            padding: 12px 15px calc(12px + env(safe-area-inset-bottom)); 
-            border-top: 1px solid #eee; z-index: 100; box-shadow: 0 -5px 15px rgba(0,0,0,0.04); 
+            position: fixed; bottom: 0; left: 0; right: 0; width: 100%; 
+            background: #fff; border-top: 1px solid #eee; z-index: 100;
+            padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); 
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.06); 
         }
 
-        .cart-list { display: flex; gap: 6px; overflow-x: auto; margin-bottom: 10px; height: 36px; align-items: center; }
-        .cart-tag { background: #fff1f0; color: var(--danger); border: 1px solid #ffa39e; padding: 4px 10px; border-radius: 6px; white-space: nowrap; font-size: 12px; }
+        .cart-list { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 12px; height: 40px; align-items: center; }
+        .cart-tag { background: #fff1f0; color: var(--danger); border: 1px solid #ffa39e; padding: 5px 12px; border-radius: 8px; white-space: nowrap; font-size: 13px; }
         
-        .btn-group { display: flex; gap: 8px; height: 52px; }
-        .btn-pay { background: var(--p); color: #fff; border: none; border-radius: 12px; flex: 1.5; font-size: 18px; font-weight: bold; }
-        .btn-tool { background: #f0f2f5; border: none; border-radius: 12px; width: 52px; font-size: 20px; color: #555; }
+        .btn-group { display: flex; gap: 10px; height: 55px; }
+        .btn-pay { background: var(--p); color: #fff; border: none; border-radius: 15px; flex: 1.5; font-size: 20px; font-weight: bold; }
+        .btn-tool { background: #f0f2f5; border: none; border-radius: 15px; width: 55px; font-size: 22px; color: #555; }
 
         /* 全螢幕覆蓋層 */
-        #staff-login, #checkout-screen, #admin-screen { 
-            position: fixed; inset: 0; background: var(--bg); z-index: 2000; 
-        }
-        #admin-screen { 
-            display: none; overflow-y: auto; padding: 20px; 
-            padding-top: calc(20px + env(safe-area-inset-top)); 
-        }
+        #staff-login, #checkout-screen, #admin-screen { position: fixed; inset: 0; background: var(--bg); z-index: 2000; }
+        #admin-screen { display: none; overflow-y: auto; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); }
         #checkout-screen { background: #2c3e50; display: none; flex-direction: column; padding: 20px; }
 
-        /* 管理介面元件 */
         .admin-box { background: #fff; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #eee; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .del-btn { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 12px; }
-        input, select { width: 100%; padding: 11px; border-radius: 8px; border: 1px solid #ddd; margin: 5px 0; font-size: 14px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; }
+        .del-btn { background: var(--danger); color: white; border: none; padding: 6px 12px; border-radius: 8px; }
+        input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin: 6px 0; font-size: 15px; }
 
         /* 計算機 */
-        .calc-display { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; color: white; }
-        .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex: 1; }
-        .n-btn { background: #445566; border: none; color: white; font-size: 24px; border-radius: 12px; font-weight: bold; }
+        .calc-display { display: flex; justify-content: space-between; align-items: center; margin: 15px 0; background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; color: white; }
+        .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; }
+        .n-btn { background: #445566; border: none; color: white; font-size: 26px; border-radius: 15px; font-weight: bold; min-height: 60px; }
         .n-btn.action { background: var(--s); }
         .n-btn.confirm { background: var(--p); grid-column: span 2; }
     </style>
@@ -86,11 +94,11 @@
 
     <!-- 員工登入 -->
     <div id="staff-login">
-        <div style="padding: 50px 20px; text-align: center;">
+        <div style="padding: 60px 20px; text-align: center;">
             <h2 style="color:var(--p); margin-bottom:30px;">小森檸＆泰奶 POS</h2>
             <div style="max-width:300px; margin:0 auto;">
                 <input type="password" id="staff-input" placeholder="員工代碼" maxlength="4" inputmode="numeric" style="font-size:32px; text-align:center; letter-spacing:10px;">
-                <button onclick="POS.login()" style="width:100%; padding:16px; background:var(--p); color:white; border-radius:12px; border:none; margin-top:20px; font-size:18px;">登入系統</button>
+                <button onclick="POS.login()" style="width:100%; padding:18px; background:var(--p); color:white; border-radius:15px; border:none; margin-top:25px; font-size:18px; font-weight:bold;">登入系統</button>
             </div>
         </div>
     </div>
@@ -99,16 +107,16 @@
     <div id="pos-screen" style="display:none;">
         <header>
             <span id="user-display">👤 載入中...</span>
-            <span style="font-weight:bold;">POS 系統</span>
+            <span style="font-weight:bold;">小森檸＆泰奶</span>
         </header>
 
         <div id="main-grid"></div>
 
         <div class="cart-bar">
             <div class="cart-list" id="cart-ui"></div>
-            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px;">
-                <span style="font-size:13px; color:#888;">已選 <b id="cart-num" style="color:var(--p)">0</b> 杯</span>
-                <span style="font-size:30px; font-weight:900; color:var(--s)">$<span id="cart-total">0</span></span>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:12px;">
+                <span style="font-size:14px; color:#888;">已選 <b id="cart-num" style="color:var(--p)">0</b> 杯</span>
+                <span style="font-size:32px; font-weight:900; color:var(--s)">$<span id="cart-total">0</span></span>
             </div>
             <div class="btn-group">
                 <button class="btn-pay" onclick="POS.openCalc()">結帳找零</button>
@@ -120,15 +128,15 @@
 
     <!-- 找零計算機 -->
     <div id="checkout-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center; color:white;">
-            <b style="font-size:18px;">找零計算</b>
-            <span onclick="POS.closeCalc()" style="font-size:24px; padding:10px;">✕</span>
+        <div style="display:flex; justify-content:space-between; align-items:center; color:white; padding-bottom:10px;">
+            <b style="font-size:20px;">找零計算</b>
+            <span onclick="POS.closeCalc()" style="font-size:28px; padding:5px 15px;">✕</span>
         </div>
         <div class="calc-display">
-            <div><p style="font-size:12px; opacity:0.7">應收</p><h2 id="calc-need" style="font-size:26px;">$0</h2></div>
-            <div style="text-align:right;"><p style="font-size:12px; opacity:0.7">實收</p><h2 id="calc-in" style="color:#52c41a; font-size:36px;">0</h2></div>
+            <div><p style="font-size:13px; opacity:0.8">應收</p><h2 id="calc-need" style="font-size:28px;">$0</h2></div>
+            <div style="text-align:right;"><p style="font-size:13px; opacity:0.8">實收</p><h2 id="calc-in" style="color:#52c41a; font-size:38px;">0</h2></div>
         </div>
-        <div style="background:var(--s); color:white; padding:12px; border-radius:12px; text-align:center; margin-bottom:15px; font-size:18px;">找零：$<b id="calc-change">0</b></div>
+        <div style="background:var(--s); color:white; padding:15px; border-radius:15px; text-align:center; margin-bottom:20px; font-size:20px; font-weight:bold;">找零：$<span id="calc-change">0</span></div>
         <div class="num-grid">
             <button class="n-btn" onclick="POS.press('7')">7</button><button class="n-btn" onclick="POS.press('8')">8</button><button class="n-btn" onclick="POS.press('9')">9</button><button class="n-btn action" onclick="POS.press('C')">C</button>
             <button class="n-btn" onclick="POS.press('4')">4</button><button class="n-btn" onclick="POS.press('5')">5</button><button class="n-btn" onclick="POS.press('6')">6</button><button class="n-btn action" onclick="POS.press('00')">00</button>
@@ -140,54 +148,54 @@
 
     <!-- 管理後台 -->
     <div id="admin-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="color:#333;">管理後台</h3>
-            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">✕ 關閉</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:25px;">
+            <h3 style="color:#333; font-size:22px;">管理後台</h3>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:10px 20px; border-radius:10px; font-weight:bold;">✕ 關閉</button>
         </div>
 
-        <!-- 營收統計與 CSV -->
+        <!-- 營收區間統計 -->
         <div class="admin-box" style="background:var(--p); color:white;">
-            <p style="font-size:14px; margin-bottom:10px;">營收區間查詢與導出</p>
-            <div style="display:flex; gap:8px; margin-bottom:10px;">
+            <p style="font-weight:bold; margin-bottom:12px;">📈 營收報表與導出</p>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
                 <input type="date" id="date-start">
                 <input type="date" id="date-end">
             </div>
-            <button onclick="POS.querySales()" style="width:100%; padding:12px; background:rgba(0,0,0,0.2); color:white; border:none; border-radius:8px; margin-bottom:15px; font-weight:bold;">🔍 查詢統計</button>
+            <button onclick="POS.querySales()" style="width:100%; padding:14px; background:rgba(0,0,0,0.25); color:white; border:none; border-radius:12px; margin-bottom:20px; font-weight:bold; font-size:16px;">🔍 點擊開始查詢</button>
             
-            <div style="text-align:center; padding:10px 0;">
-                <h1 id="ad-sum" style="font-size:38px;">$0</h1>
-                <p id="ad-count" style="font-size:14px; opacity:0.8;">今日累計：0 杯</p>
+            <div style="text-align:center; padding:15px 0; border-top:1px solid rgba(255,255,255,0.2);">
+                <h1 id="ad-sum" style="font-size:42px; margin-bottom:5px;">$0</h1>
+                <p id="ad-count" style="font-size:16px; opacity:0.9;">查詢杯數：0 杯</p>
             </div>
             
-            <button onclick="POS.exportCSV()" style="width:100%; padding:14px; background:var(--s); color:white; border:none; border-radius:12px; font-weight:bold; margin-top:10px;">📊 導出區間 CSV 報表</button>
+            <button onclick="POS.exportCSV()" style="width:100%; padding:16px; background:var(--s); color:white; border:none; border-radius:15px; font-weight:bold; font-size:17px; margin-top:15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">📊 導出 CSV 報表</button>
         </div>
 
         <!-- 員工管理 -->
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px;">員工管理 (新增/刪除)</p>
-            <div style="display:flex; gap:5px; margin-bottom:12px;">
-                <input type="text" id="new-staff-n" placeholder="員工姓名" style="flex:1.5">
-                <input type="number" id="new-staff-c" placeholder="代碼" style="flex:1">
-                <button onclick="POS.addStaff()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
+            <p style="font-weight:bold; margin-bottom:12px;">👥 員工管理</p>
+            <div style="display:flex; gap:8px; margin-bottom:15px;">
+                <input type="text" id="new-staff-n" placeholder="姓名" style="flex:1.5">
+                <input type="number" id="new-staff-c" placeholder="4位代碼" style="flex:1">
+                <button onclick="POS.addStaff()" style="padding:0 20px; background:var(--p); color:white; border:none; border-radius:10px; font-weight:bold;">新增</button>
             </div>
-            <div id="admin-staff-list" style="max-height:150px; overflow-y:auto;"></div>
+            <div id="admin-staff-list" style="max-height:180px; overflow-y:auto; border-top:1px solid #eee;"></div>
         </div>
 
         <!-- 商品管理 -->
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px;">品項設定</p>
-            <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <input type="text" id="new-cat" placeholder="新分類名稱" style="flex:1">
-                <button onclick="POS.addCat()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增類別</button>
+            <p style="font-weight:bold; margin-bottom:12px;">🏷️ 品項設定</p>
+            <div style="display:flex; gap:8px; margin-bottom:15px;">
+                <input type="text" id="new-cat" placeholder="新分類(如:檸檬系列)" style="flex:1">
+                <button onclick="POS.addCat()" style="padding:0 20px; background:var(--p); color:white; border:none; border-radius:10px; font-weight:bold;">新增類別</button>
             </div>
-            <hr style="margin:15px 0; opacity:0.2;">
-            <select id="cat-select"><option value="">-- 先選擇分類 --</option></select>
-            <div style="display:flex; gap:5px; margin-top:8px;">
+            <hr style="margin:20px 0; opacity:0.1;">
+            <select id="cat-select" style="font-weight:bold; color:var(--p);"><option value="">-- 先選擇分類再加飲料 --</option></select>
+            <div style="display:flex; gap:8px; margin-top:12px;">
                 <input type="text" id="new-it-n" placeholder="飲品名稱" style="flex:2">
                 <input type="number" id="new-it-p" placeholder="金額" style="flex:1">
-                <button onclick="POS.addItem()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
+                <button onclick="POS.addItem()" style="padding:0 20px; background:var(--p); color:white; border:none; border-radius:10px; font-weight:bold;">新增</button>
             </div>
-            <div id="admin-item-list" style="margin-top:15px; max-height:200px; overflow-y:auto;"></div>
+            <div id="admin-item-list" style="margin-top:20px; max-height:250px; overflow-y:auto; border-top:1px solid #eee;"></div>
         </div>
     </div>
 
@@ -207,33 +215,30 @@
                 document.getElementById('date-start').value = today;
                 document.getElementById('date-end').value = today;
 
-                // 1. 監聽員工
                 firebase.database().ref(`stores/${this.storeID}/staff`).on("value", s => {
                     this.staff = s.val() || [{name:"店長", code:"8888"}];
                     this.renderStaffList();
                 });
 
-                // 2. 監聽商品
                 firebase.database().ref(`stores/${this.storeID}/inventory`).on("value", s => {
                     this.inv = s.val() || [];
                     this.renderGrid();
                     this.renderAdminLists();
                 });
 
-                // 3. 初始統計
                 this.querySales();
             },
 
-            // --- 員工管理 ---
+            // 員工
             addStaff() {
                 const n = document.getElementById("new-staff-n").value.trim();
                 const c = document.getElementById("new-staff-c").value.trim();
-                if(n && c.length >= 3) {
+                if(n && c.length === 4) {
                     this.staff.push({ name: n, code: c });
                     this.saveStaff();
                     document.getElementById("new-staff-n").value = "";
                     document.getElementById("new-staff-c").value = "";
-                } else { alert("請輸入完整姓名與代碼"); }
+                } else { alert("請輸入姓名與4位數字代碼"); }
             },
             delStaff(idx) { if(confirm("確定刪除此員工？")) { this.staff.splice(idx, 1); this.saveStaff(); } },
             saveStaff() { firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staff); },
@@ -241,18 +246,18 @@
                 const list = document.getElementById("admin-staff-list");
                 list.innerHTML = "";
                 this.staff.forEach((s, idx) => {
-                    list.innerHTML += `<div class="list-item"><span>${s.name} (${s.code})</span><button class="del-btn" onclick="POS.delStaff(${idx})">刪除</button></div>`;
+                    list.innerHTML += `<div class="list-item"><span><b>${s.name}</b> (${s.code})</span><button class="del-btn" onclick="POS.delStaff(${idx})">刪除</button></div>`;
                 });
             },
 
-            // --- 營業統計與 CSV ---
+            // 統計與導出
             querySales() {
                 const start = document.getElementById('date-start').value;
                 const end = document.getElementById('date-end').value;
                 firebase.database().ref(`stores/${this.storeID}/sales`).once("value", s => {
                     const allData = s.val() || {};
                     let filtered = [];
-                    Object.keys(allData).forEach(date => {
+                    Object.keys(allData).sort().forEach(date => {
                         if(date >= start && date <= end) {
                             Object.values(allData[date]).forEach(order => filtered.push({ ...order, date }));
                         }
@@ -260,21 +265,21 @@
                     this.sales = filtered;
                     const sum = filtered.reduce((a, b) => a + b.p, 0);
                     document.getElementById("ad-sum").innerText = "$" + sum;
-                    document.getElementById("ad-count").innerText = `累計：${filtered.length} 杯`;
+                    document.getElementById("ad-count").innerText = `查詢期間累計：${filtered.length} 杯`;
                 });
             },
             exportCSV() {
-                if(this.sales.length === 0) return alert("無數據可導出");
-                let csv = "\uFEFF日期,時間,員工,品項,金額\n";
+                if(this.sales.length === 0) return alert("該區間無數據可導出");
+                let csv = "\uFEFF日期,時間,店員,品項,金額\n";
                 this.sales.forEach(s => csv += `${s.date},${s.t},${s.s},${s.n},${s.p}\n`);
                 const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `小森檸_${document.getElementById('date-start').value}.csv`;
+                link.download = `小森檸報表_${document.getElementById('date-start').value}_${document.getElementById('date-end').value}.csv`;
                 link.click();
             },
 
-            // --- 基礎 POS 功能 ---
+            // 核心功能
             login() {
                 const code = document.getElementById("staff-input").value;
                 const found = this.staff.find(s => s.code == code);
@@ -316,7 +321,7 @@
                 ui.scrollLeft = ui.scrollWidth;
             },
 
-            // --- 計算機與結帳 ---
+            // 結帳
             openCalc() {
                 const total = document.getElementById("cart-total").innerText;
                 if(total == "0") return;
@@ -340,7 +345,7 @@
             },
             submitPay() {
                 const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
-                if(parseInt(this.inStr) < need) return alert("金額不足");
+                if(parseInt(this.inStr) < need) return alert("實收金額不足！");
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
                 this.cart.forEach(it => {
@@ -348,11 +353,11 @@
                         t: time, s: this.user.name, n: it.n, p: it.p
                     });
                 });
-                alert("結帳完成！");
+                alert("結帳成功！");
                 this.cart = []; this.updateCartUI(); this.closeCalc(); this.querySales();
             },
 
-            // --- 品項管理 ---
+            // 商品與分類管理
             renderAdminLists() {
                 const sel = document.getElementById("cat-select");
                 const list = document.getElementById("admin-item-list");
@@ -362,7 +367,7 @@
                     sel.innerHTML += `<option value="${ci}">${c.cat}</option>`;
                     if(c.items) {
                         c.items.forEach((it, ii) => {
-                            list.innerHTML += `<div class="list-item"><span>[${c.cat}] ${it.n} ($${it.p})</span><button class="del-btn" onclick="POS.delItem(${ci}, ${ii})">刪除</button></div>`;
+                            list.innerHTML += `<div class="list-item"><span>[${c.cat}] <b>${it.n}</b> ($${it.p})</span><button class="del-btn" onclick="POS.delItem(${ci}, ${ii})">刪除</button></div>`;
                         });
                     }
                 });
@@ -375,15 +380,15 @@
                 const ci = document.getElementById("cat-select").value;
                 const n = document.getElementById("new-it-n").value.trim();
                 const p = parseInt(document.getElementById("new-it-p").value);
-                if(ci && n && p) {
+                if(ci !== "" && n && p) {
                     if(!this.inv[ci].items) this.inv[ci].items = [];
                     this.inv[ci].items.push({ n, p });
                     this.saveInv();
                     document.getElementById("new-it-n").value="";
                     document.getElementById("new-it-p").value="";
-                } else { alert("資訊不完整"); }
+                } else { alert("請選分類並輸入完整品名與金額"); }
             },
-            delItem(ci, ii) { if(confirm("確定刪除？")) { this.inv[ci].items.splice(ii, 1); this.saveInv(); } },
+            delItem(ci, ii) { if(confirm("確定刪除此商品？")) { this.inv[ci].items.splice(ii, 1); this.saveInv(); } },
             saveInv() { firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv); },
             openAdmin() { if(prompt("管理密碼") === "8888") document.getElementById("admin-screen").style.display = "block"; }
         };
