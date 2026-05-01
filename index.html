@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 找零加強版</title>
+    <title>小森檸 POS - 找零與快速登出版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -21,8 +21,9 @@
         
         /* POS 主介面 */
         #pos-screen { display: none; flex-direction: column; height: 100vh; }
-        header { background: var(--p); color: white; padding: 12px; display: flex; justify-content: space-around; font-size: 14px; }
+        header { background: var(--p); color: white; padding: 12px; display: flex; justify-content: space-around; align-items: center; font-size: 14px; position: relative; }
         header b { display: block; font-size: 18px; }
+        .logout-link { background: rgba(255,255,255,0.2); color: white; border: none; padding: 5px 12px; border-radius: 5px; font-size: 12px; }
         
         .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
         .nav-btn { padding: 8px 18px; background: #eee; border: none; border-radius: 20px; white-space: nowrap; font-size: 14px; }
@@ -39,7 +40,7 @@
         /* 找零彈窗 */
         #change-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: none; align-items: center; justify-content: center; }
         .modal-content { background: #fff; width: 85%; max-width: 300px; padding: 20px; border-radius: 15px; text-align: center; }
-        .change-res { font-size: 28px; color: #e74c3c; font-weight: bold; margin: 15px 0; }
+        .change-res { font-size: 32px; color: #e74c3c; font-weight: bold; margin: 15px 0; }
 
         /* 管理畫面 */
         #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 1000; display: none; padding: 20px; overflow-y: auto; }
@@ -56,7 +57,7 @@
             <h1 style="color:var(--p)">小森檸 POS</h1>
             <input type="text" id="acc" placeholder="分店帳號 (Email)">
             <input type="password" id="pw" placeholder="密碼">
-            <button class="btn-main" onclick="POS.doLogin()">登入</button>
+            <button class="btn-main" onclick="POS.doLogin()">登入系統</button>
         </div>
     </div>
 
@@ -64,7 +65,10 @@
         <header>
             <div>今日杯數<b id="st-count">0</b></div>
             <div>今日營收<b id="st-sum">$0</b></div>
-            <div onclick="POS.exportCSV()" style="background:rgba(255,255,255,0.2); padding:5px 10px; border-radius:8px;">匯出報表</div>
+            <div style="display:flex; flex-direction:column; gap:5px;">
+                <button onclick="POS.exportCSV()" style="background:rgba(255,255,255,0.2); color:white; border:none; padding:4px 8px; border-radius:5px; font-size:12px;">匯出報表</button>
+                <button onclick="POS.doLogout()" class="logout-link">登出</button>
+            </div>
         </header>
 
         <div class="nav-bar" id="nav-tabs"></div>
@@ -86,14 +90,17 @@
     <!-- 找零彈窗 -->
     <div id="change-modal">
         <div class="modal-content">
-            <h3 style="margin-top:0;">找零計算</h3>
-            <div style="text-align:left; margin-bottom:10px; color:#666;">應收金額: $<span id="modal-total">0</span></div>
-            <input type="number" id="cash-in" placeholder="輸入顧客支付金額" style="font-size:20px; text-align:center;" oninput="POS.calcChange()">
-            <div style="margin-top:10px; color:#666;">應找金額:</div>
+            <h3 style="margin:0 0 10px 0;">結帳收款</h3>
+            <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:15px;">
+                <div style="color:#666; font-size:13px;">應收總計</div>
+                <div style="font-size:24px; font-weight:bold; color:#333;">$<span id="modal-total">0</span></div>
+            </div>
+            <input type="number" id="cash-in" placeholder="顧客付多少錢？" style="font-size:24px; text-align:center; height:60px; border:2px solid var(--p);" oninput="POS.calcChange()">
+            <div style="margin-top:15px; color:#666; font-size:13px;">應找金額</div>
             <div class="change-res" id="change-val">$0</div>
-            <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('change-modal').style.display='none'" style="flex:1; padding:10px; border-radius:8px; border:1px solid #ccc; background:#eee;">取消</button>
-                <button onclick="POS.checkout()" style="flex:2; padding:10px; border-radius:8px; border:none; background:var(--p); color:white; font-weight:bold;">完成結帳</button>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+                <button onclick="document.getElementById('change-modal').style.display='none'" style="flex:1; padding:15px; border-radius:10px; border:1px solid #ccc; background:#fff;">取消</button>
+                <button onclick="POS.checkout()" style="flex:2; padding:15px; border-radius:10px; border:none; background:var(--p); color:white; font-weight:bold; font-size:18px;">完成結帳</button>
             </div>
         </div>
     </div>
@@ -101,11 +108,10 @@
     <div id="admin-screen">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2>店鋪管理</h2>
-            <button onclick="document.getElementById('admin-screen').style.display='none'">關閉</button>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="padding:10px;">關閉</button>
         </div>
         <button onclick="POS.addCat()" style="width:100%; padding:15px; background:var(--s); color:#fff; border:none; border-radius:10px; margin-bottom:20px; font-weight:bold;">＋ 新增飲品分類</button>
         <div id="editor"></div>
-        <button onclick="firebase.auth().signOut()" style="width:100%; margin-top:50px; color:#999; border:none; background:none;">登出帳號</button>
     </div>
 
     <script>
@@ -134,14 +140,23 @@
                             this.showLogin();
                         }
                     });
-                } catch (e) { alert("系統出錯"); }
+                } catch (e) { alert("連線失敗，請檢查網路"); }
             },
 
             showLogin() { document.getElementById("login-screen").style.display = "block"; document.getElementById("pos-screen").style.display = "none"; },
             showPOS() { document.getElementById("login-screen").style.display = "none"; document.getElementById("pos-screen").style.display = "flex"; },
             doLogin() {
                 const a = document.getElementById("acc").value, p = document.getElementById("pw").value;
-                firebase.auth().signInWithEmailAndPassword(a, p).catch(e => alert("登入失敗"));
+                if(!a || !p) return alert("請輸入帳號密碼");
+                firebase.auth().signInWithEmailAndPassword(a, p).catch(e => alert("帳號或密碼錯誤"));
+            },
+            doLogout() {
+                if(confirm("確定要登出系統嗎？")) {
+                    firebase.auth().signOut().then(() => {
+                        this.cart = [];
+                        this.updateCartUI();
+                    });
+                }
             },
 
             startSync() {
@@ -184,7 +199,6 @@
                 document.getElementById("total-val").innerText = this.total;
             },
 
-            // --- 找零邏輯 ---
             openChangeModal() {
                 if(this.cart.length === 0) return;
                 document.getElementById("modal-total").innerText = this.total;
@@ -213,7 +227,7 @@
                 });
                 
                 document.getElementById("change-modal").style.display = "none";
-                alert(`結帳完成！\n找零：$${cash - this.total}`);
+                alert(`結帳完成！\n應找金額：$${cash - this.total}`);
                 this.cart = []; this.updateCartUI();
                 document.getElementById("cart-detail").style.display = 'none';
             },
@@ -251,7 +265,7 @@
                             <button onclick="POS.inv[${ci}].items.splice(${ii},1);POS.saveInv();POS.renderEditor()">✕</button>
                         </div>`;
                     });
-                    h += `</div><button onclick="POS.inv[${ci}].items.push({id:Date.now(),n:'新飲品',p:50});POS.saveInv();POS.renderEditor()" style="width:100%;margin-top:5px;border:1px dashed #999;background:none;">＋品項</button></div>`;
+                    h += `</div><button onclick="POS.inv[${ci}].items.push({id:Date.now(),n:'新飲品',p:50});POS.saveInv();POS.renderEditor()" style="width:100%;margin-top:5px;border:1px dashed #999;background:none;padding:5px;">＋品項</button></div>`;
                 });
                 box.innerHTML = h;
             },
