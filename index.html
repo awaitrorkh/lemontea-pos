@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>小森檸 POS - 完整功能版</title>
+    <title>小森檸 POS - 最終完整整合版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -45,7 +45,7 @@
         .p-card b { font-size: 14px; color: #333; margin-bottom: 5px; }
         .p-card span { color: var(--p); font-weight: bold; font-size: 15px; }
 
-        /* 底部結帳欄位 */
+        /* 底部結帳區 */
         .cart-bar { 
             position: fixed; bottom: 0; width: 100%; background: #fff; 
             padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); 
@@ -58,33 +58,38 @@
         .btn-pay { background: var(--p); color: #fff; border: none; border-radius: 12px; flex: 1; font-size: 20px; font-weight: bold; }
         .btn-tool { background: #f0f2f5; border: none; border-radius: 12px; width: 60px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 
-        /* 全螢幕覆蓋層 */
-        #staff-login, #checkout-screen, #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 2000; }
-        #checkout-screen { background: #2c3e50; display: none; flex-direction: column; padding: 20px; color: white; }
-        #admin-screen { display: none; overflow-y: auto; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); }
-
-        /* 計算機佈局：標準 7-8-9 在上 */
+        /* 計算機視窗 */
+        #checkout-screen { 
+            position: fixed; inset: 0; background: #2c3e50; z-index: 3000; 
+            display: none; flex-direction: column; padding: 20px; color: white; 
+        }
         .calc-display { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 15px; margin: 20px 0; }
         .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex: 1; }
         .n-btn { background: #445566; border: none; color: white; font-size: 28px; border-radius: 12px; font-weight: bold; min-height: 65px; }
+        .n-btn:active { background: #556677; }
         .n-btn.action { background: var(--s); }
         .n-btn.confirm { background: var(--p); grid-column: span 2; }
 
-        .admin-box { background: #fff; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #eee; color: #333; }
-        .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
+        /* 管理與登入層 */
+        #staff-login, #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 2000; }
+        #admin-screen { display: none; overflow-y: auto; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); }
+        .admin-box { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #eee; color: #333; }
         input, select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin: 5px 0; font-size: 15px; }
     </style>
 </head>
 <body>
 
+    <!-- 登入介面 -->
     <div id="staff-login">
         <div style="padding: 80px 20px; text-align: center;">
-            <h2 style="color:var(--p); margin-bottom:30px;">小森檸＆泰奶 POS</h2>
-            <input type="password" id="staff-input" placeholder="請輸入4位代碼" maxlength="4" inputmode="numeric" style="font-size:32px; text-align:center; width:220px; border:none; border-bottom:2px solid var(--p);">
-            <button onclick="POS.login()" style="width:220px; padding:15px; background:var(--p); color:white; border-radius:12px; border:none; font-size:18px; font-weight:bold; margin-top:30px;">登入系統</button>
+            <h2 style="color:var(--p); margin-bottom:30px;">小森檸POS</h2>
+            <input type="password" id="staff-input" placeholder="輸入4位代碼" maxlength="4" inputmode="numeric" style="font-size:32px; text-align:center; width:220px; border:none; border-bottom:2px solid var(--p); padding:10px;">
+            <br>
+            <button onclick="POS.login()" style="width:220px; padding:15px; background:var(--p); color:white; border-radius:12px; border:none; font-size:18px; font-weight:bold; margin-top:30px;">登入</button>
         </div>
     </div>
 
+    <!-- POS 主畫面 -->
     <div id="pos-screen" style="display:none;">
         <header>
             <span id="user-display">👤 載入中...</span>
@@ -107,10 +112,11 @@
         </div>
     </div>
 
+    <!-- 標準計算機視窗 (7-8-9 在上) -->
     <div id="checkout-screen">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="font-size:22px;">找零計算</h2>
-            <span onclick="POS.closeCalc()" style="font-size:30px; padding:10px;">✕</span>
+            <span onclick="POS.closeCalc()" style="font-size:32px; padding:10px;">✕</span>
         </div>
         <div class="calc-display">
             <div style="display:flex; justify-content:space-between; opacity:0.7; font-size:14px;"><span>應收</span><span>實收</span></div>
@@ -127,5 +133,177 @@
             <button class="n-btn" onclick="POS.press('8')">8</button>
             <button class="n-btn" onclick="POS.press('9')">9</button>
             <button class="n-btn action" onclick="POS.press('C')">C</button>
+            
             <button class="n-btn" onclick="POS.press('4')">4</button>
-            <button class="n-btn" onclick="POS.press('5')">5</
+            <button class="n-btn" onclick="POS.press('5')">5</button>
+            <button class="n-btn" onclick="POS.press('6')">6</button>
+            <button class="n-btn action" onclick="POS.press('00')">00</button>
+            
+            <button class="n-btn" onclick="POS.press('1')">1</button>
+            <button class="n-btn" onclick="POS.press('2')">2</button>
+            <button class="n-btn" onclick="POS.press('3')">3</button>
+            <button class="n-btn" onclick="POS.press('0')">0</button>
+            
+            <button class="n-btn confirm" onclick="POS.submitPay()">確認結帳</button>
+            <button class="n-btn action" style="grid-column: span 2; background:#666;" onclick="POS.closeCalc()">取消</button>
+        </div>
+    </div>
+
+    <!-- 管理後台 -->
+    <div id="admin-screen">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+            <h3>管理後台</h3>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">✕</button>
+        </div>
+        <div class="admin-box">
+            <p>報表查詢</p>
+            <div style="display:flex; gap:5px;"><input type="date" id="date-start"><input type="date" id="date-end"></div>
+            <button onclick="POS.querySales()" style="width:100%; padding:10px; background:var(--p); color:white; border:none; border-radius:8px; margin-top:10px;">查詢與導出 CSV</button>
+        </div>
+        <div id="admin-staff-area" class="admin-box">
+            <p>員工管理 (功能開發中)</p>
+        </div>
+    </div>
+
+    <script>
+        const POS = {
+            dbCfg: {
+                apiKey: "AIzaSyDXSWgD5PqSqfu1xCEcghRXVnJfztv2iV8",
+                databaseURL: "https://lemontea-ad44d-default-rtdb.firebaseio.com",
+                projectId: "lemontea-ad44d"
+            },
+            storeID: "LittleForest_Main",
+            staff: [], inv: [], cart: [], user: null, inStr: "0",
+
+            init() {
+                firebase.initializeApp(this.dbCfg);
+                firebase.database().ref(`stores/${this.storeID}/staff`).on("value", s => {
+                    this.staff = s.val() || [{name:"店長", code:"8888"}];
+                });
+                firebase.database().ref(`stores/${this.storeID}/inventory`).on("value", s => {
+                    this.inv = s.val() || [];
+                    this.renderGrid();
+                });
+                // 設定預設日期
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('date-start').value = today;
+                document.getElementById('date-end').value = today;
+            },
+
+            login() {
+                const code = document.getElementById("staff-input").value;
+                const found = this.staff.find(s => s.code == code);
+                if(found) {
+                    this.user = found;
+                    document.getElementById("user-display").innerText = "👤 " + found.name;
+                    document.getElementById("staff-login").style.display = "none";
+                    document.getElementById("pos-screen").style.display = "flex";
+                } else alert("代碼錯誤");
+            },
+
+            renderGrid() {
+                const grid = document.getElementById("main-grid"); grid.innerHTML = "";
+                this.inv.forEach(c => {
+                    let h = `<div class="cat-section"><div class="cat-name">${c.cat}</div><div class="items-flex">`;
+                    if(c.items) c.items.forEach(it => h += `<div class="p-card" onclick="POS.addCart('${it.n}', ${it.p})"><b>${it.n}</b><span>$${it.p}</span></div>`);
+                    grid.innerHTML += h + `</div></div>`;
+                });
+            },
+
+            addCart(n, p) {
+                this.cart.push({n, p, id: Date.now()});
+                this.updateUI();
+            },
+
+            updateUI() {
+                const total = this.cart.reduce((a,b)=>a+b.p, 0);
+                document.getElementById("cart-num").innerText = this.cart.length;
+                document.getElementById("cart-total").innerText = total;
+                const tags = document.getElementById("cart-tags"); tags.innerHTML = "";
+                this.cart.forEach(it => {
+                    const span = document.createElement("span");
+                    span.innerText = it.n + " ✕";
+                    span.style = "background:#f0f0f0; padding:4px 10px; border-radius:8px; font-size:13px; white-space:nowrap;";
+                    span.onclick = () => { this.cart = this.cart.filter(x => x.id != it.id); this.updateUI(); };
+                    tags.appendChild(span);
+                });
+                tags.scrollLeft = tags.scrollWidth;
+            },
+
+            // --- 計算機邏輯 ---
+            openCalc() {
+                const total = parseInt(document.getElementById("cart-total").innerText);
+                if(total <= 0) return alert("請先點餐！");
+                
+                this.inStr = "0"; 
+                document.getElementById("calc-in").innerText = "0";
+                document.getElementById("calc-change").innerText = "0";
+                document.getElementById("calc-need").innerText = "$" + total;
+                document.getElementById("checkout-screen").style.display = "flex";
+            },
+
+            closeCalc() {
+                document.getElementById("checkout-screen").style.display = "none";
+            },
+
+            press(v) {
+                if(v === 'C') this.inStr = "0";
+                else if(v === '00') this.inStr = (this.inStr === "0") ? "0" : this.inStr + "00";
+                else this.inStr = (this.inStr === "0") ? v : this.inStr + v;
+                
+                document.getElementById("calc-in").innerText = this.inStr;
+                const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
+                const change = parseInt(this.inStr) - need;
+                document.getElementById("calc-change").innerText = change > 0 ? change : 0;
+            },
+
+            submitPay() {
+                const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
+                const input = parseInt(this.inStr);
+                if(input < need) return alert("金額不足！");
+                
+                const today = new Date().toISOString().split('T')[0];
+                const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+                
+                this.cart.forEach(it => {
+                    firebase.database().ref(`stores/${this.storeID}/sales/${today}`).push({
+                        t: time, s: this.user.name, n: it.n, p: it.p
+                    });
+                });
+                
+                alert("結帳成功！");
+                this.cart = []; this.updateUI(); this.closeCalc();
+            },
+
+            querySales() {
+                const s = document.getElementById('date-start').value;
+                const e = document.getElementById('date-end').value;
+                firebase.database().ref(`stores/${this.storeID}/sales`).once("value", snap => {
+                    const data = snap.val() || {};
+                    let csv = "\uFEFF日期,時間,員工,品項,金額\n";
+                    Object.keys(data).forEach(d => {
+                        if(d >= s && d <= e) {
+                            Object.values(data[d]).forEach(v => {
+                                csv += `${d},${v.t},${v.s},${v.n},${v.p}\n`;
+                            });
+                        }
+                    });
+                    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+                    const link = document.createElement("a");
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `小森檸報表_${s}.csv`;
+                    link.click();
+                });
+            },
+
+            openAdmin() {
+                if(prompt("請輸入管理密碼") === "8888") {
+                    document.getElementById("admin-screen").style.display = "block";
+                }
+            }
+        };
+
+        window.onload = () => POS.init();
+    </script>
+</body>
+</html>
