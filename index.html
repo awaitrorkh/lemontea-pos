@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 權限管理版</title>
+    <title>小森檸 POS - 員工代碼與業績追蹤版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -13,59 +13,65 @@
         :root { --p: #27ae60; --s: #e67e22; --bg: #f4f7f6; }
         body { font-family: -apple-system, sans-serif; margin: 0; background: var(--bg); height: 100vh; overflow: hidden; }
         #boot-screen { position: fixed; inset: 0; background: #fff; z-index: 10000; display: flex; align-items: center; justify-content: center; flex-direction: column; }
-        #login-screen { display: none; padding: 20px; text-align: center; margin-top: 10vh; }
-        .login-card { background: #fff; padding: 20px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
-        #pos-screen { display: none; flex-direction: column; height: 100vh; }
         
-        /* 標題列樣式優化 */
-        header { background: var(--p); color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
-        .header-info { display: flex; gap: 15px; }
-        header b { display: block; font-size: 18px; }
+        /* 登入樣式 */
+        .full-screen-center { position: fixed; inset: 0; background: var(--bg); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+        .login-card { background: #fff; padding: 25px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); width: 100%; max-width: 350px; text-align: center; }
+        input { width: 100%; padding: 14px; margin: 10px 0; border: 1px solid #ddd; border-radius: 10px; font-size: 16px; box-sizing: border-box; }
+        .btn-main { background: var(--p); color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; font-size: 18px; cursor: pointer; }
+
+        /* POS 主介面 */
+        #pos-screen { display: none; flex-direction: column; height: 100vh; }
+        header { background: var(--p); color: white; padding: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .admin-only { display: none; }
         
         .nav-bar { display: flex; gap: 8px; overflow-x: auto; padding: 10px; background: #fff; border-bottom: 1px solid #ddd; }
         .nav-btn { padding: 8px 18px; background: #eee; border: none; border-radius: 20px; white-space: nowrap; font-size: 14px; }
         #main-grid { flex: 1; overflow-y: auto; padding: 10px; padding-bottom: 160px; }
         .items-flex { display: flex; flex-wrap: wrap; gap: 8px; }
-        .p-card { width: calc(33.33% - 6px); min-height: 100px; background: #fff; padding: 10px 5px; border-radius: 12px; text-align: center; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: center; box-sizing: border-box; }
-        
+        .p-card { width: calc(33.33% - 6px); min-height: 100px; background: #fff; padding: 10px 5px; border-radius: 12px; text-align: center; border: 1px solid #eee; display: flex; flex-direction: column; justify-content: center; }
+
         .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; border-top: 1px solid #ddd; padding: 12px; box-sizing: border-box; }
-        .btn-main { background: var(--p); color: #fff; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; font-size: 18px; }
         
-        /* 權限控制元素 */
-        .admin-only { display: none; }
-        
-        #change-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: none; align-items: center; justify-content: center; }
-        .modal-content { background: #fff; width: 85%; max-width: 300px; padding: 20px; border-radius: 15px; text-align: center; }
-        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 1000; display: none; padding: 20px; overflow-y: auto; }
+        #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 9500; display: none; padding: 20px; overflow-y: auto; }
+        .staff-tag { display: inline-block; background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 4px; font-size: 12px; }
     </style>
 </head>
 <body>
 
     <div id="boot-screen"><h2>系統啟動中...</h2></div>
 
-    <div id="login-screen">
+    <!-- 第一層：分店登入 (Email) -->
+    <div id="store-login" class="full-screen-center" style="display:none;">
         <div class="login-card">
-            <h1 style="color:var(--p)">小森檸 POS</h1>
-            <input type="text" id="acc" placeholder="帳號 (Email)">
-            <input type="password" id="pw" placeholder="密碼">
-            <button class="btn-main" onclick="POS.doLogin()">登入</button>
+            <h2 style="color:var(--p)">分店系統登入</h2>
+            <input type="text" id="store-acc" placeholder="分店 Email">
+            <input type="password" id="store-pw" placeholder="分店密碼">
+            <button class="btn-main" onclick="POS.storeLogin()">開啟裝置</button>
+        </div>
+    </div>
+
+    <!-- 第二層：員工代碼登入 -->
+    <div id="staff-login" class="full-screen-center" style="display:none;">
+        <div class="login-card">
+            <h2 style="color:var(--p)">請輸入員工代碼</h2>
+            <input type="password" id="staff-code" placeholder="4 - 6 位數代碼" pattern="\[0-9]*" inputmode="numeric" style="font-size:30px; text-align:center; letter-spacing:10px;">
+            <button class="btn-main" onclick="POS.staffLogin()">進入點餐介面</button>
+            <p onclick="firebase.auth().signOut()" style="margin-top:20px; color:#999; font-size:12px;">關閉此裝置</p>
         </div>
     </div>
 
     <div id="pos-screen">
         <header>
-            <!-- 老闆看到的資訊 -->
-            <div class="header-info admin-only">
-                <div>今日杯數<b id="st-count">0</b></div>
-                <div>今日營收<b id="st-sum">$0</b></div>
+            <div class="admin-only">
+                今日營收 <b id="st-sum">$0</b>
             </div>
-            <!-- 員工看到的資訊 -->
-            <div class="staff-only" style="font-size:18px; font-weight:bold;">小森檸 POS 系統</div>
-            
+            <div class="staff-info">
+                員工: <span id="current-staff-name" class="staff-tag">讀取中</span>
+            </div>
             <div style="display:flex; gap:5px;">
                 <button onclick="POS.exportCSV()" class="admin-only" style="background:rgba(255,255,255,0.2); color:white; border:none; padding:6px 10px; border-radius:5px;">報表</button>
-                <button onclick="POS.doLogout()" style="background:rgba(255,255,255,0.2); color:white; border:none; padding:6px 10px; border-radius:5px;">登出</button>
+                <button onclick="POS.staffLogout()" style="background:rgba(255,255,255,0.2); color:white; border:none; padding:6px 10px; border-radius:5px;">交班登出</button>
             </div>
         </header>
 
@@ -84,27 +90,36 @@
         </div>
     </div>
 
-    <!-- 找零彈窗 (略，同前版) -->
-    <div id="change-modal">
-        <div class="modal-content">
-            <h3>收款找零</h3>
-            <div style="background:#f8f9fa; padding:10px; border-radius:8px; margin-bottom:10px;">應收: $<span id="modal-total">0</span></div>
-            <input type="number" id="cash-in" placeholder="顧客支付" style="font-size:24px; text-align:center;">
+    <!-- 管理後台 -->
+    <div id="admin-screen">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h2>店鋪與員工管理</h2>
+            <button onclick="document.getElementById('admin-screen').style.display='none'">關閉</button>
+        </div>
+        
+        <div style="background:#eee; padding:15px; border-radius:10px; margin-bottom:20px;">
+            <h3>員工名單管理</h3>
+            <div id="staff-list-editor"></div>
+            <button onclick="POS.addStaff()" style="width:100%; margin-top:10px; padding:10px;">＋ 新增員工</button>
+        </div>
+
+        <h3>菜單管理</h3>
+        <button onclick="POS.addCat()" style="width:100%; padding:15px; background:var(--s); color:white; border:none; border-radius:10px;">＋ 新增分類</button>
+        <div id="editor" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- 找零彈窗 -->
+    <div id="change-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:10000; display:none; align-items:center; justify-content:center;">
+        <div class="login-card">
+            <h3>結帳找零</h3>
+            <div style="font-size:20px; margin-bottom:10px;">應收: $<span id="modal-total">0</span></div>
+            <input type="number" id="cash-in" placeholder="顧客付多少" style="font-size:24px; text-align:center;">
             <div id="change-val" style="font-size:32px; font-weight:bold; color:#e74c3c; margin:15px 0;">$0</div>
             <div style="display:flex; gap:10px;">
                 <button onclick="document.getElementById('change-modal').style.display='none'" style="flex:1; padding:10px;">取消</button>
-                <button onclick="POS.checkout()" style="flex:2; padding:10px; background:var(--p); color:white; border:none; border-radius:8px;">完成結帳</button>
+                <button onclick="POS.checkout()" style="flex:2; padding:15px; background:var(--p); color:white; border:none; border-radius:10px;">完成結帳</button>
             </div>
         </div>
-    </div>
-
-    <div id="admin-screen">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2>統一菜單管理</h2>
-            <button onclick="document.getElementById('admin-screen').style.display='none'">關閉</button>
-        </div>
-        <button onclick="POS.addCat()" style="width:100%; padding:15px; background:var(--s); color:white; border:none; border-radius:10px;">＋ 新增分類</button>
-        <div id="editor" style="margin-top:20px;"></div>
     </div>
 
     <script>
@@ -118,46 +133,55 @@
                 messagingSenderId: "84807565645",
                 appId: "1:84807565645:web:d4607f39cbb5c751e0f704"
             },
-            storeID: "", isAdmin: false, inv: [], sales: [], cart: [], total: 0,
+            storeID: "", currentUser: null, isAdmin: false,
+            inv: [], sales: [], cart: [], staffList: [], currentStaff: null,
 
             init() {
                 if (!firebase.apps.length) firebase.initializeApp(this.config);
                 firebase.auth().onAuthStateChanged(user => {
                     document.getElementById("boot-screen").style.display = "none";
                     if (user) {
-                        const email = user.email.toLowerCase();
-                        this.storeID = email.split("@")[0].replace(/\./g, "_");
-                        
-                        // 【權限判定】：Email 包含 'admin' 才是老闆
-                        this.isAdmin = email.includes("admin");
-                        this.applyPermissions();
-                        
-                        document.getElementById("pos-screen").style.display = "flex";
-                        document.getElementById("login-screen").style.display = "none";
+                        this.storeID = user.email.split("@")[0].replace(/\./g, "_");
+                        this.isAdmin = user.email.toLowerCase().includes("admin");
                         this.startSync();
+                        this.showStaffLogin();
                     } else {
-                        document.getElementById("pos-screen").style.display = "none";
-                        document.getElementById("login-screen").style.display = "block";
+                        this.showStoreLogin();
                     }
                 });
             },
 
-            applyPermissions() {
-                const adminElems = document.querySelectorAll('.admin-only');
-                const staffElems = document.querySelectorAll('.staff-only');
-                adminElems.forEach(el => el.style.display = this.isAdmin ? 'block' : 'none');
-                staffElems.forEach(el => el.style.display = this.isAdmin ? 'none' : 'block');
-            },
+            showStoreLogin() { document.getElementById("store-login").style.display = "flex"; document.getElementById("staff-login").style.display = "none"; document.getElementById("pos-screen").style.display = "none"; },
+            showStaffLogin() { document.getElementById("store-login").style.display = "none"; document.getElementById("staff-login").style.display = "flex"; document.getElementById("pos-screen").style.display = "none"; },
+            showPOS() { document.getElementById("staff-login").style.display = "none"; document.getElementById("pos-screen").style.display = "flex"; this.applyPerms(); },
 
-            doLogin() {
-                const a = document.getElementById("acc").value, p = document.getElementById("pw").value;
+            storeLogin() {
+                const a = document.getElementById("store-acc").value, p = document.getElementById("store-pw").value;
                 firebase.auth().signInWithEmailAndPassword(a, p).catch(e => alert("登入失敗"));
             },
-            doLogout() { if(confirm("登出系統？")) firebase.auth().signOut(); },
+
+            staffLogin() {
+                const code = document.getElementById("staff-code").value;
+                const found = this.staffList.find(s => s.code === code);
+                if (found) {
+                    this.currentStaff = found;
+                    document.getElementById("current-staff-name").innerText = found.name;
+                    this.showPOS();
+                } else {
+                    alert("代碼錯誤，請洽老闆");
+                }
+            },
+
+            staffLogout() { this.currentStaff = null; document.getElementById("staff-code").value = ""; this.showStaffLogin(); },
+
+            applyPerms() {
+                document.querySelectorAll('.admin-only').forEach(el => el.style.display = this.isAdmin ? 'block' : 'none');
+            },
 
             startSync() {
                 const db = firebase.database();
                 db.ref(`global_menu/inventory`).on("value", s => { this.inv = s.val() || []; this.renderGrid(); });
+                db.ref(`stores/${this.storeID}/staff`).on("value", s => { this.staffList = s.val() || []; });
                 const today = new Date().toISOString().split('T')[0];
                 db.ref(`stores/${this.storeID}/sales/${today}`).on("value", s => {
                     this.sales = Object.values(s.val() || {});
@@ -172,7 +196,7 @@
                     tabs.innerHTML += `<button class="nav-btn" onclick="document.getElementById('c-${ci}').scrollIntoView({behavior:'smooth'})">${c.cat}</button>`;
                     let h = `<div id="c-${ci}"><h3>${c.cat}</h3><div class="items-flex">`;
                     (c.items || []).forEach(it => {
-                        h += `<div class="p-card" onclick="POS.addCart('${it.id}')"><b>${it.n}</b><span style="color:var(--p);">$${it.p}</span></div>`;
+                        h += `<div class="p-card" onclick="POS.addCart('${it.id}')"><b>${it.n}</b><span style="color:var(--p);font-weight:bold;">$${it.p}</span></div>`;
                     });
                     grid.innerHTML += h + `</div></div>`;
                 });
@@ -185,53 +209,84 @@
             },
 
             updateCartUI() {
-                this.total = 0;
-                this.cart.forEach(it => this.total += it.p);
+                let total = 0;
+                this.cart.forEach(it => total += it.p);
                 document.getElementById("cart-count").innerText = this.cart.length;
-                document.getElementById("total-val").innerText = this.total;
+                document.getElementById("total-val").innerText = total;
             },
 
             openChangeModal() {
                 if(this.cart.length === 0) return;
-                document.getElementById("modal-total").innerText = this.total;
+                const total = parseInt(document.getElementById("total-val").innerText);
+                document.getElementById("modal-total").innerText = total;
                 document.getElementById("cash-in").value = "";
                 document.getElementById("change-val").innerText = "$0";
                 document.getElementById("change-modal").style.display = "flex";
                 document.getElementById("cash-in").oninput = () => {
                     const cash = Number(document.getElementById("cash-in").value) || 0;
-                    document.getElementById("change-val").innerText = "$" + Math.max(0, cash - this.total);
+                    document.getElementById("change-val").innerText = "$" + Math.max(0, cash - total);
                 };
             },
 
             checkout() {
+                const total = parseInt(document.getElementById("modal-total").innerText);
                 const cash = Number(document.getElementById("cash-in").value) || 0;
-                if (cash < this.total) return alert("金額不足");
+                if (cash < total) return alert("金額不足");
+                
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+                const db = firebase.database();
+                
                 this.cart.forEach(it => {
-                    firebase.database().ref(`stores/${this.storeID}/sales/${today}`).push({ time, n: it.n, p: it.p });
+                    db.ref(`stores/${this.storeID}/sales/${today}`).push({
+                        time, 
+                        n: it.n, 
+                        p: it.p, 
+                        staff: this.currentStaff.name // 紀錄是誰賣的
+                    });
                 });
-                alert("結帳成功");
+
+                alert(`結帳完成！找零: $${cash - total}`);
                 this.cart = []; this.updateCartUI();
                 document.getElementById("change-modal").style.display = "none";
             },
 
             updateStats() {
                 let sum = 0; this.sales.forEach(s => sum += s.p);
-                document.getElementById("st-count").innerText = this.sales.length;
                 document.getElementById("st-sum").innerText = "$" + sum;
             },
 
             exportCSV() {
-                if(!this.isAdmin) return;
-                let csv = "\uFEFF時間,品項,金額\n";
-                this.sales.forEach(s => csv += `${s.time},${s.n},${s.p}\n`);
+                if(this.sales.length === 0) return alert("今日無資料");
+                let csv = "\uFEFF時間,員工,品項,金額\n";
+                this.sales.forEach(s => csv += `${s.time},${s.staff || '未知'},${s.n},${s.p}\n`);
                 const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
                 const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
-                a.download = `報表_${this.storeID}.csv`; a.click();
+                a.download = `小森檸報表_${this.storeID}_${new Date().toLocaleDateString()}.csv`; a.click();
             },
 
-            openAdmin() { if(this.isAdmin && prompt("管理密碼") === "8888") { document.getElementById("admin-screen").style.display = "block"; this.renderEditor(); } },
+            openAdmin() { if(this.isAdmin && prompt("管理密碼") === "8888") { 
+                document.getElementById("admin-screen").style.display = "block"; 
+                this.renderStaffList();
+                this.renderEditor(); 
+            }},
+
+            renderStaffList() {
+                const box = document.getElementById("staff-list-editor");
+                let h = "";
+                this.staffList.forEach((s, si) => {
+                    h += `<div style="display:flex; gap:5px; margin-bottom:10px;">
+                        <input type="text" value="${s.name}" placeholder="員工姓名" style="flex:2;" onchange="POS.staffList[${si}].name=this.value;POS.saveStaff()">
+                        <input type="text" value="${s.code}" placeholder="代碼" style="flex:1;" onchange="POS.staffList[${si}].code=this.value;POS.saveStaff()">
+                        <button onclick="POS.staffList.splice(${si},1);POS.saveStaff();POS.renderStaffList()" style="background:red; color:white; border:none; border-radius:5px; padding:0 10px;">✕</button>
+                    </div>`;
+                });
+                box.innerHTML = h;
+            },
+
+            addStaff() { this.staffList.push({name: "新員工", code: "1234"}); this.saveStaff(); this.renderStaffList(); },
+            saveStaff() { firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staffList); },
+
             renderEditor() {
                 const box = document.getElementById("editor"); let h = "";
                 this.inv.forEach((c, ci) => {
