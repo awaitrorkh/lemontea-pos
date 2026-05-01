@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>小森檸 POS - 管理加強版</title>
+    <title>小森檸 POS - 全功能最終版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -45,6 +45,7 @@
         .p-card b { font-size: 14px; color: #333; margin-bottom: 5px; }
         .p-card span { color: var(--p); font-weight: bold; font-size: 15px; }
 
+        /* 購物車區 */
         .cart-bar { 
             position: fixed; bottom: 0; width: 100%; background: #fff; 
             padding: 15px 15px calc(15px + env(safe-area-inset-bottom)); 
@@ -57,6 +58,7 @@
         .btn-pay { background: var(--p); color: #fff; border: none; border-radius: 12px; flex: 1; font-size: 20px; font-weight: bold; }
         .btn-tool { background: #f0f2f5; border: none; border-radius: 12px; width: 60px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
 
+        /* 計算機 */
         #checkout-screen { 
             position: fixed; inset: 0; background: #2c3e50; z-index: 3000; 
             display: none; flex-direction: column; padding: 20px; color: white; 
@@ -71,30 +73,27 @@
         #staff-login, #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 2000; }
         #admin-screen { display: none; overflow-y: auto; padding: 20px; padding-top: calc(20px + env(safe-area-inset-top)); }
         .admin-box { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #eee; color: #333; }
-        .stat-row { display: flex; justify-content: space-around; text-align: center; margin-bottom: 15px; }
+        .stat-row { display: flex; justify-content: space-around; text-align: center; margin-bottom: 10px; }
         .stat-item b { display: block; font-size: 20px; color: var(--p); }
-        input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #ddd; margin: 5px 0; font-size: 15px; }
-        
-        .staff-list-item { 
-            display: flex; justify-content: space-between; align-items: center; 
-            background: white; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #eee;
-        }
-        .del-btn { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; }
+        input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin: 5px 0; font-size: 15px; }
+        .list-item { display: flex; justify-content: space-between; align-items: center; background: white; padding: 10px; border-radius: 8px; margin-top: 5px; border: 1px solid #eee; }
+        .del-btn { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 5px; font-size: 12px; }
+        .sub-title { font-weight: bold; color: var(--p); border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-    <!-- 登入介面 -->
+    <!-- 1. 登入介面 -->
     <div id="staff-login">
         <div style="padding: 80px 20px; text-align: center;">
             <h2 style="color:var(--p); margin-bottom:30px;">小森檸POS</h2>
-            <input type="password" id="staff-input" placeholder="輸入代碼" maxlength="4" inputmode="numeric" style="font-size:32px; text-align:center; width:220px; border:none; border-bottom:2px solid var(--p); padding:10px;">
+            <input type="password" id="staff-input" placeholder="輸入4位代碼" maxlength="4" inputmode="numeric" style="font-size:32px; text-align:center; width:220px; border:none; border-bottom:2px solid var(--p); padding:10px;">
             <br>
-            <button onclick="POS.login()" style="width:220px; padding:15px; background:var(--p); color:white; border-radius:12px; border:none; font-size:18px; font-weight:bold; margin-top:30px;">登入</button>
+            <button onclick="POS.login()" style="width:220px; padding:15px; background:var(--p); color:white; border-radius:12px; border:none; font-size:18px; font-weight:bold; margin-top:30px;">登入系統</button>
         </div>
     </div>
 
-    <!-- POS 主畫面 -->
+    <!-- 2. POS 主畫面 -->
     <div id="pos-screen" style="display:none;">
         <header>
             <span id="user-display">👤 載入中...</span>
@@ -115,7 +114,7 @@
         </div>
     </div>
 
-    <!-- 計算機 -->
+    <!-- 3. 計算機 -->
     <div id="checkout-screen">
         <div style="display:flex; justify-content:space-between; align-items:center;">
             <h2 style="font-size:22px;">找零計算</h2>
@@ -137,40 +136,51 @@
         </div>
     </div>
 
-    <!-- 管理後台 -->
+    <!-- 4. 管理後台 -->
     <div id="admin-screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="color:var(--p)">管理後台</h3>
+            <h3 style="color:var(--p)">管理中心</h3>
             <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">✕ 關閉</button>
         </div>
 
-        <!-- 1. 今日統計 -->
+        <!-- 營業統計 -->
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:10px;">今日即時營收</p>
+            <p class="sub-title">今日數據</p>
             <div class="stat-row">
-                <div class="stat-item">今日營業額<b id="stat-today-rev">$0</b></div>
-                <div class="stat-item">今日總杯數<b id="stat-today-qty">0 杯</b></div>
+                <div class="stat-item">營業額<b id="stat-today-rev">$0</b></div>
+                <div class="stat-item">總杯數<b id="stat-today-qty">0 杯</b></div>
             </div>
-        </div>
-
-        <!-- 2. 報表導出 -->
-        <div class="admin-box">
-            <p style="font-weight:bold;">日期區間統計與導出</p>
+            <p class="sub-title">區間統計導出</p>
             <div style="display:flex; gap:5px;"><input type="date" id="date-start"><input type="date" id="date-end"></div>
-            <button onclick="POS.exportCSV()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:8px; margin-top:10px; font-weight:bold;">下載統計報表 (CSV)</button>
+            <button onclick="POS.exportCSV()" style="width:100%; padding:12px; background:var(--p); color:white; border:none; border-radius:8px; margin-top:10px;">下載統計報表 (CSV)</button>
         </div>
 
-        <!-- 3. 員工管理 -->
+        <!-- 分類與品項管理 -->
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:10px;">員工名單管理</p>
+            <p class="sub-title">商品管理 (大類與品項)</p>
+            <input type="text" id="new-cat-name" placeholder="輸入新分類名稱 (如：水果茶系)">
+            <button onclick="POS.addCategory()" style="width:100%; padding:8px; background:var(--p); color:white; border:none; border-radius:8px; margin-bottom:15px;">＋ 新增大類分類</button>
+            
+            <div style="background:#fff; padding:10px; border-radius:10px; border:1px solid #ddd;">
+                <p style="font-size:13px; color:#666;">新增品項至分類：</p>
+                <select id="target-cat-select" style="width:100%; padding:10px; margin:5px 0;"></select>
+                <input type="text" id="new-item-name" placeholder="商品名稱">
+                <input type="number" id="new-item-price" placeholder="價格" inputmode="numeric">
+                <button onclick="POS.addItem()" style="width:100%; padding:10px; background:var(--s); color:white; border:none; border-radius:8px; margin-top:5px;">＋ 點擊新增品項</button>
+            </div>
+
+            <div id="admin-inventory-list" style="margin-top:15px;"></div>
+        </div>
+
+        <!-- 員工管理 -->
+        <div class="admin-box">
+            <p class="sub-title">員工管理</p>
             <div style="display:flex; gap:5px;">
                 <input type="text" id="new-staff-name" placeholder="姓名">
-                <input type="text" id="new-staff-code" placeholder="代碼" maxlength="4">
+                <input type="text" id="new-staff-code" placeholder="4位代碼" maxlength="4">
             </div>
             <button onclick="POS.addStaff()" style="width:100%; padding:10px; background:var(--s); color:white; border:none; border-radius:8px; margin-top:5px;">＋ 新增員工</button>
-            <div id="staff-list-container" style="margin-top:15px;">
-                <!-- 員工清單會渲染在此 -->
-            </div>
+            <div id="staff-list-container" style="margin-top:10px;"></div>
         </div>
     </div>
 
@@ -186,17 +196,15 @@
 
             init() {
                 firebase.initializeApp(this.dbCfg);
-                // 監聽員工資料
                 firebase.database().ref(`stores/${this.storeID}/staff`).on("value", s => {
                     this.staff = s.val() ? Object.keys(s.val()).map(k => ({...s.val()[k], id: k})) : [];
                     this.renderStaffList();
                 });
-                // 監聽菜單
                 firebase.database().ref(`stores/${this.storeID}/inventory`).on("value", s => {
-                    this.inv = s.val() || [];
+                    this.inv = s.val() ? Object.keys(s.val()).map(k => ({...s.val()[k], id: k})) : [];
                     this.renderGrid();
+                    this.renderAdminInv();
                 });
-                // 預設日期
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('date-start').value = today;
                 document.getElementById('date-end').value = today;
@@ -214,20 +222,63 @@
                 } else alert("代碼錯誤");
             },
 
+            // --- 商品管理邏輯 ---
             renderGrid() {
                 const grid = document.getElementById("main-grid"); grid.innerHTML = "";
                 this.inv.forEach(c => {
                     let h = `<div class="cat-section"><div class="cat-name">${c.cat}</div><div class="items-flex">`;
-                    if(c.items) c.items.forEach(it => h += `<div class="p-card" onclick="POS.addCart('${it.n}', ${it.p})"><b>${it.n}</b><span>$${it.p}</span></div>`);
+                    if(c.items) {
+                        Object.keys(c.items).forEach(k => {
+                            const it = c.items[k];
+                            h += `<div class="p-card" onclick="POS.addCart('${it.n}', ${it.p})"><b>${it.n}</b><span>$${it.p}</span></div>`;
+                        });
+                    }
                     grid.innerHTML += h + `</div></div>`;
                 });
             },
 
-            addCart(n, p) {
-                this.cart.push({n, p, id: Date.now()});
-                this.updateUI();
+            renderAdminInv() {
+                const list = document.getElementById("admin-inventory-list");
+                const select = document.getElementById("target-cat-select");
+                list.innerHTML = ""; select.innerHTML = "";
+                this.inv.forEach(c => {
+                    select.innerHTML += `<option value="${c.id}">${c.cat}</option>`;
+                    let h = `<div style="margin-top:10px; background:#eee; padding:8px; border-radius:8px;">
+                                <div style="display:flex; justify-content:space-between; font-weight:bold;">
+                                    ${c.cat} <button class="del-btn" onclick="POS.delCat('${c.id}')">刪除大類</button>
+                                </div>`;
+                    if(c.items) {
+                        Object.keys(c.items).forEach(k => {
+                            const it = c.items[k];
+                            h += `<div class="list-item"><span>${it.n} ($${it.p})</span><button class="del-btn" onclick="POS.delItem('${c.id}','${k}')">✕</button></div>`;
+                        });
+                    }
+                    list.innerHTML += h + `</div>`;
+                });
             },
 
+            addCategory() {
+                const name = document.getElementById("new-cat-name").value;
+                if(!name) return;
+                firebase.database().ref(`stores/${this.storeID}/inventory`).push({ cat: name });
+                document.getElementById("new-cat-name").value = "";
+            },
+
+            addItem() {
+                const catId = document.getElementById("target-cat-select").value;
+                const name = document.getElementById("new-item-name").value;
+                const price = parseInt(document.getElementById("new-item-price").value);
+                if(!catId || !name || isNaN(price)) return alert("請填寫完整資訊");
+                firebase.database().ref(`stores/${this.storeID}/inventory/${catId}/items`).push({ n: name, p: price });
+                document.getElementById("new-item-name").value = "";
+                document.getElementById("new-item-price").value = "";
+            },
+
+            delCat(id) { if(confirm("確定刪除整個大類？")) firebase.database().ref(`stores/${this.storeID}/inventory/${id}`).remove(); },
+            delItem(cid, iid) { firebase.database().ref(`stores/${this.storeID}/inventory/${cid}/items/${iid}`).remove(); },
+
+            // --- 購物車與結帳 ---
+            addCart(n, p) { this.cart.push({n, p, id: Date.now()}); this.updateUI(); },
             updateUI() {
                 const total = this.cart.reduce((a,b)=>a+b.p, 0);
                 document.getElementById("cart-num").innerText = this.cart.length;
@@ -245,15 +296,13 @@
             openCalc() {
                 const total = parseInt(document.getElementById("cart-total").innerText);
                 if(total <= 0) return;
-                this.inStr = "0"; 
-                document.getElementById("calc-in").innerText = "0";
+                this.inStr = "0"; document.getElementById("calc-in").innerText = "0";
                 document.getElementById("calc-change").innerText = "0";
                 document.getElementById("calc-need").innerText = "$" + total;
                 document.getElementById("checkout-screen").style.display = "flex";
             },
 
             closeCalc() { document.getElementById("checkout-screen").style.display = "none"; },
-
             press(v) {
                 if(v === 'C') this.inStr = "0";
                 else if(v === '00') this.inStr = (this.inStr === "0") ? "0" : this.inStr + "00";
@@ -266,8 +315,7 @@
 
             submitPay() {
                 const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
-                const input = parseInt(this.inStr);
-                if(input < need) return alert("金額不足");
+                if(parseInt(this.inStr) < need) return alert("金額不足");
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
                 this.cart.forEach(it => {
@@ -275,81 +323,56 @@
                         t: time, s: this.user.name, n: it.n, p: it.p
                     });
                 });
-                alert("結帳完成");
-                this.cart = []; this.updateUI(); this.closeCalc();
-                this.updateTodayStats();
+                alert("結帳完成"); this.cart = []; this.updateUI(); this.closeCalc(); this.updateTodayStats();
             },
 
-            // --- 後台補全功能 ---
+            // --- 報表與統計 ---
             updateTodayStats() {
                 const today = new Date().toISOString().split('T')[0];
                 firebase.database().ref(`stores/${this.storeID}/sales/${today}`).once("value", snap => {
-                    const data = snap.val() || {};
-                    let rev = 0, qty = 0;
-                    Object.values(data).forEach(v => { rev += v.p; qty++; });
-                    document.getElementById("stat-today-rev").innerText = "$" + rev;
-                    document.getElementById("stat-today-qty").innerText = qty + " 杯";
+                    let r = 0, q = 0;
+                    if(snap.val()) Object.values(snap.val()).forEach(v => { r += v.p; q++; });
+                    document.getElementById("stat-today-rev").innerText = "$" + r;
+                    document.getElementById("stat-today-qty").innerText = q + " 杯";
                 });
             },
 
             exportCSV() {
-                const s = document.getElementById('date-start').value;
-                const e = document.getElementById('date-end').value;
+                const s = document.getElementById('date-start').value, e = document.getElementById('date-end').value;
                 firebase.database().ref(`stores/${this.storeID}/sales`).once("value", snap => {
-                    const allData = snap.val() || {};
-                    let csv = "\uFEFF日期,時間,員工,品項,金額\n";
-                    let totalP = 0, totalQ = 0;
-                    Object.keys(allData).sort().forEach(date => {
-                        if(date >= s && date <= e) {
-                            Object.values(allData[date]).forEach(v => {
-                                csv += `${date},${v.t},${v.s},${v.n},${v.p}\n`;
-                                totalP += v.p; totalQ++;
-                            });
+                    const all = snap.val() || {};
+                    let csv = "\uFEFF日期,時間,員工,品項,金額\n", tr = 0, tq = 0;
+                    Object.keys(all).sort().forEach(d => {
+                        if(d >= s && d <= e) {
+                            Object.values(all[d]).forEach(v => { csv += `${d},${v.t},${v.s},${v.n},${v.p}\n`; tr += v.p; tq++; });
                         }
                     });
-                    csv += `\n總計區間,,${s} ~ ${e},總杯數:${totalQ},總營收:${totalP}`;
-                    const blob = new Blob([csv], {type:"text/csv;charset=utf-8;"});
+                    csv += `\n總計區間,,${s} ~ ${e},總杯數:${tq},總金額:${tr}`;
                     const link = document.createElement("a");
-                    link.href = URL.createObjectURL(blob);
-                    link.download = `小森檸統計_${s}_to_${e}.csv`;
-                    link.click();
+                    link.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8;"}));
+                    link.download = `小森檸報表_${s}_${e}.csv`; link.click();
                 });
             },
 
+            // --- 員工管理 ---
             renderStaffList() {
-                const container = document.getElementById("staff-list-container");
-                container.innerHTML = "";
+                const c = document.getElementById("staff-list-container"); c.innerHTML = "";
                 this.staff.forEach(st => {
-                    const item = document.createElement("div");
-                    item.className = "staff-list-item";
-                    item.innerHTML = `<span>${st.name} (${st.code})</span><button class="del-btn" onclick="POS.deleteStaff('${st.id}')">刪除</button>`;
-                    container.appendChild(item);
+                    const div = document.createElement("div"); div.className = "list-item";
+                    div.innerHTML = `<span>${st.name} (${st.code})</span><button class="del-btn" onclick="POS.delStaff('${st.id}')">刪除</button>`;
+                    c.appendChild(div);
                 });
             },
-
             addStaff() {
-                const name = document.getElementById("new-staff-name").value;
-                const code = document.getElementById("new-staff-code").value;
-                if(!name || code.length < 4) return alert("請輸入正確姓名與4位代碼");
-                firebase.database().ref(`stores/${this.storeID}/staff`).push({ name, code });
-                document.getElementById("new-staff-name").value = "";
-                document.getElementById("new-staff-code").value = "";
+                const n = document.getElementById("new-staff-name").value, c = document.getElementById("new-staff-code").value;
+                if(!n || c.length < 4) return alert("資料不全");
+                firebase.database().ref(`stores/${this.storeID}/staff`).push({ name: n, code: c });
+                document.getElementById("new-staff-name").value = ""; document.getElementById("new-staff-code").value = "";
             },
+            delStaff(id) { if(confirm("確定刪除？")) firebase.database().ref(`stores/${this.storeID}/staff/${id}`).remove(); },
 
-            deleteStaff(id) {
-                if(confirm("確定要刪除這位員工嗎？")) {
-                    firebase.database().ref(`stores/${this.storeID}/staff/${id}`).remove();
-                }
-            },
-
-            openAdmin() {
-                if(prompt("請輸入管理密碼") === "8888") {
-                    this.updateTodayStats();
-                    document.getElementById("admin-screen").style.display = "block";
-                }
-            }
+            openAdmin() { if(prompt("管理密碼") === "8888") document.getElementById("admin-screen").style.display = "block"; }
         };
-
         window.onload = () => POS.init();
     </script>
 </body>
