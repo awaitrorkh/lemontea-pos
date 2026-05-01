@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>小森檸 POS - 進階管理版</title>
+    <title>小森檸 POS - 區間報表版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -14,12 +14,8 @@
         
         body { 
             font-family: -apple-system, "Noto Sans TC", sans-serif; 
-            background: var(--bg); 
-            height: 100vh; 
-            height: -webkit-fill-available; 
-            overflow: hidden; 
-            display: flex; 
-            flex-direction: column; 
+            background: var(--bg); height: 100vh; height: -webkit-fill-available; 
+            overflow: hidden; display: flex; flex-direction: column; 
         }
 
         /* 登入介面 */
@@ -127,42 +123,51 @@
         </div>
     </div>
 
-    <!-- 管理後台 (含日期導出優化) -->
+    <!-- 管理後台 (區間報表優化) -->
     <div id="admin-screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h3 style="color:#333;">後台管理面板</h3>
-            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px; font-weight:bold;">✕ 關閉</button>
+            <h3 style="color:#333;">店鋪營運管理</h3>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">✕ 關閉</button>
         </div>
 
-        <!-- 營業額區域 -->
+        <!-- 報表查詢與導出 -->
         <div class="admin-box" style="background:var(--p); color:white; text-align:center;">
-            <div style="margin-bottom:10px;">
-                <label style="font-size:12px; opacity:0.8;">查詢與導出日期：</label>
-                <input type="date" id="report-date" style="background:#fff; color:#333; margin-top:5px; border:none;" onchange="POS.loadSalesByDate(this.value)">
+            <div style="display:flex; gap:8px; margin-bottom:10px;">
+                <div style="flex:1">
+                    <label style="font-size:11px; opacity:0.8;">開始日期</label>
+                    <input type="date" id="date-start" style="margin-top:2px; height:35px;">
+                </div>
+                <div style="flex:1">
+                    <label style="font-size:11px; opacity:0.8;">結束日期</label>
+                    <input type="date" id="date-end" style="margin-top:2px; height:35px;">
+                </div>
             </div>
+            <button onclick="POS.querySalesRange()" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); color:white; border:none; border-radius:8px; margin-bottom:15px; font-size:13px;">🔍 查詢此區間</button>
+            
             <h1 id="ad-sum" style="font-size:36px;">$0</h1>
-            <p id="ad-count" style="font-size:13px; opacity:0.8;">累計銷量：0 杯</p>
-            <button onclick="POS.exportCSV()" style="width:100%; padding:12px; background:var(--s); color:white; border:none; border-radius:10px; font-weight:bold; margin-top:15px; font-size:15px;">📊 導出所選日期報表</button>
+            <p id="ad-count" style="font-size:13px; opacity:0.8;">區間總銷量：0 杯</p>
+            
+            <button onclick="POS.exportCSVRange()" style="width:100%; padding:14px; background:var(--s); color:white; border:none; border-radius:12px; font-weight:bold; margin-top:15px;">📊 導出區間 CSV 報表</button>
         </div>
 
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px; color:#444;">1. 類別管理</p>
+            <p style="font-weight:bold; margin-bottom:8px;">1. 類別管理</p>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <input type="text" id="new-cat" placeholder="例如：純茶類">
-                <button onclick="POS.addCat()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px; white-space:nowrap;">新增</button>
+                <input type="text" id="new-cat" placeholder="類別名">
+                <button onclick="POS.addCat()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
             </div>
             <div id="admin-cat-list"></div>
         </div>
 
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px; color:#444;">2. 品項管理</p>
-            <select id="cat-select"><option value="">-- 請先選擇大類 --</option></select>
+            <p style="font-weight:bold; margin-bottom:8px;">2. 品項管理</p>
+            <select id="cat-select"><option value="">-- 先選類別 --</option></select>
             <div style="display:flex; gap:5px; margin-top:5px; margin-bottom:10px;">
                 <input type="text" id="new-it-n" placeholder="品名" style="flex:2">
                 <input type="number" id="new-it-p" placeholder="價" style="flex:1">
                 <button onclick="POS.addItem()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
             </div>
-            <div id="admin-item-list" style="max-height:200px; overflow-y:auto;"></div>
+            <div id="admin-item-list" style="max-height:180px; overflow-y:auto;"></div>
         </div>
     </div>
 
@@ -174,38 +179,71 @@
                 projectId: "lemontea-ad44d"
             },
             storeID: "LittleForest_Main",
-            staff: [], inv: [], cart: [], sales: [], user: null, inStr: "0", currentReportDate: "",
+            staff: [], inv: [], cart: [], sales: [], user: null, inStr: "0",
 
             init() {
                 firebase.initializeApp(this.dbCfg);
-                const db = firebase.database();
                 
-                // 設定預設日期為今天
+                // 設定日期初始值（預設今天）
                 const today = new Date().toISOString().split('T')[0];
-                document.getElementById('report-date').value = today;
-                this.currentReportDate = today;
+                document.getElementById('date-start').value = today;
+                document.getElementById('date-end').value = today;
 
-                db.ref(`stores/${this.storeID}/staff`).on("value", s => {
+                firebase.database().ref(`stores/${this.storeID}/staff`).on("value", s => {
                     this.staff = s.val() || [{name:"店長", code:"8888"}];
                 });
 
-                db.ref(`stores/${this.storeID}/inventory`).on("value", s => {
+                firebase.database().ref(`stores/${this.storeID}/inventory`).on("value", s => {
                     this.inv = s.val() || [];
                     this.renderGrid();
                     this.renderAdminLists();
                 });
 
-                this.loadSalesByDate(today);
+                this.querySalesRange(); // 初始加載
             },
 
-            loadSalesByDate(date) {
-                this.currentReportDate = date;
-                firebase.database().ref(`stores/${this.storeID}/sales/${date}`).on("value", s => {
-                    this.sales = s.val() ? Object.values(s.val()) : [];
+            // 核心功能：查詢日期區間
+            querySalesRange() {
+                const start = document.getElementById('date-start').value;
+                const end = document.getElementById('date-end').value;
+                
+                // 顯示加載中
+                document.getElementById("ad-sum").innerText = "讀取中...";
+
+                firebase.database().ref(`stores/${this.storeID}/sales`).once("value", s => {
+                    const allDays = s.val() || {};
+                    let rangeSales = [];
+                    
+                    // 遍歷所有日期，篩選出在區間內的
+                    Object.keys(allDays).sort().forEach(dateKey => {
+                        if (dateKey >= start && dateKey <= end) {
+                            const dayData = Object.values(allDays[dateKey]);
+                            dayData.forEach(item => {
+                                rangeSales.push({ ...item, date: dateKey });
+                            });
+                        }
+                    });
+
+                    this.sales = rangeSales;
                     const sum = this.sales.reduce((a, b) => a + b.p, 0);
                     document.getElementById("ad-sum").innerText = "$" + sum;
-                    document.getElementById("ad-count").innerText = `累計銷量：${this.sales.length} 杯`;
+                    document.getElementById("ad-count").innerText = `區間總銷量：${this.sales.length} 杯`;
                 });
+            },
+
+            exportCSVRange() {
+                if(this.sales.length === 0) return alert("此區間無數據");
+                const start = document.getElementById('date-start').value;
+                const end = document.getElementById('date-end').value;
+                
+                let csv = "\uFEFF日期,時間,員工,品項,金額\n";
+                this.sales.forEach(s => csv += `${s.date},${s.t},${s.s},${s.n},${s.p}\n`);
+                
+                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(blob);
+                link.download = `小森檸報表_${start}_至_${end}.csv`;
+                link.click();
             },
 
             login() {
@@ -289,6 +327,7 @@
                 });
                 alert("結帳成功！");
                 this.cart = []; this.updateCartUI(); this.closeCalc();
+                this.querySalesRange(); // 自動更新後台數據
             },
 
             openAdmin() { if(prompt("管理密碼")==="8888") document.getElementById("admin-screen").style.display="block"; },
@@ -297,11 +336,11 @@
                 const catSel = document.getElementById("cat-select");
                 const catList = document.getElementById("admin-cat-list");
                 const itemList = document.getElementById("admin-item-list");
-                catSel.innerHTML = '<option value="">-- 選擇大類 --</option>';
+                catSel.innerHTML = '<option value="">-- 選類別 --</option>';
                 catList.innerHTML = ""; itemList.innerHTML = "";
                 this.inv.forEach((c, cIdx) => {
                     catSel.innerHTML += `<option value="${cIdx}">${c.cat}</option>`;
-                    catList.innerHTML += `<div class="list-item"><span>${c.cat}</span><button class="del-btn" onclick="POS.delCat(${cIdx})">刪除類別</button></div>`;
+                    catList.innerHTML += `<div class="list-item"><span>${c.cat}</span><button class="del-btn" onclick="POS.delCat(${cIdx})">刪除</button></div>`;
                     if(c.items) {
                         c.items.forEach((it, itIdx) => {
                             itemList.innerHTML += `<div class="list-item"><span>[${c.cat}] ${it.n}</span><button class="del-btn" onclick="POS.delItem(${cIdx}, ${itIdx})">刪除</button></div>`;
@@ -314,7 +353,7 @@
                 const name = document.getElementById("new-cat").value;
                 if(name) { this.inv.push({ cat: name, items: [] }); this.saveInv(); document.getElementById("new-cat").value = ""; }
             },
-            delCat(idx) { if(confirm("確定刪除此大類？")) { this.inv.splice(idx, 1); this.saveInv(); } },
+            delCat(idx) { if(confirm("確定刪除？")) { this.inv.splice(idx, 1); this.saveInv(); } },
             addItem() {
                 const idx = document.getElementById("cat-select").value;
                 const n = document.getElementById("new-it-n").value;
@@ -326,19 +365,8 @@
                     document.getElementById("new-it-n").value = ""; document.getElementById("new-it-p").value = "";
                 }
             },
-            delItem(cIdx, itIdx) { if(confirm("確定刪除此品項？")) { this.inv[cIdx].items.splice(itIdx, 1); this.saveInv(); } },
-            saveInv() { firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv); },
-            
-            exportCSV() {
-                if(this.sales.length === 0) return alert("該日期無銷售數據！");
-                let csv = "\uFEFF時間,員工,品項,金額\n";
-                this.sales.forEach(s => csv += `${s.t},${s.s},${s.n},${s.p}\n`);
-                const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-                const link = document.createElement("a");
-                link.href = URL.createObjectURL(blob);
-                link.download = `小森檸報表_${this.currentReportDate}.csv`;
-                link.click();
-            }
+            delItem(cIdx, itIdx) { if(confirm("確定刪除？")) { this.inv[cIdx].items.splice(itIdx, 1); this.saveInv(); } },
+            saveInv() { firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv); }
         };
 
         window.onload = () => POS.init();
