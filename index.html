@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>小森檸 POS - 優化版</title>
+    <title>小森檸 POS - 專業修復版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -18,57 +18,62 @@
         .login-card { background: #fff; padding: 40px 30px; border-radius: 25px; width: 320px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.1); }
         .login-card input { font-size: 32px; text-align: center; letter-spacing: 10px; width: 100%; padding: 15px; border-radius: 15px; border: 2px solid #eee; margin: 20px 0; outline: none; }
 
-        /* 主畫面佈局 */
-        header { background: var(--p); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-        #main-grid { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 280px; }
-        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .p-card { background: #fff; padding: 12px 5px; border-radius: 12px; text-align: center; border: 1px solid #eee; height: 85px; display: flex; flex-direction: column; justify-content: center; }
-        .p-card b { font-size: 13px; margin-bottom: 4px; }
+        /* 主畫面 */
+        header { background: var(--p); color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+        #main-grid { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 250px; }
+        .items-flex { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 15px; }
+        .p-card { background: #fff; padding: 12px 5px; border-radius: 12px; text-align: center; border: 1px solid #eee; height: 85px; display: flex; flex-direction: column; justify-content: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .p-card b { font-size: 13px; margin-bottom: 4px; color: #333; }
         .p-card span { color: var(--p); font-weight: bold; font-size: 14px; }
 
         /* 底部操作區 */
-        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; padding: 10px 15px 25px; border-top: 2px solid #eee; z-index: 100; }
+        .cart-bar { position: fixed; bottom: 0; width: 100%; background: #fff; padding: 10px 15px 25px; border-top: 2px solid #eee; z-index: 100; box-shadow: 0 -5px 20px rgba(0,0,0,0.05); }
         .cart-list { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; height: 40px; align-items: center; }
-        .cart-tag { background: #fff1f0; color: var(--danger); border: 1px solid #ffa39e; padding: 5px 10px; border-radius: 8px; white-space: nowrap; font-size: 13px; }
-        .btn-group { display: flex; gap: 10px; height: 55px; }
+        .cart-tag { background: #fff1f0; color: var(--danger); border: 1px solid #ffa39e; padding: 5px 12px; border-radius: 8px; white-space: nowrap; font-size: 13px; font-weight: bold; }
+        .btn-group { display: flex; gap: 10px; height: 60px; }
         .btn-pay { background: var(--p); color: #fff; border: none; border-radius: 12px; flex: 2; font-size: 20px; font-weight: bold; }
-        .btn-tool { background: #f8f9fa; border: 1px solid #ddd; border-radius: 12px; width: 55px; font-size: 22px; }
+        .btn-tool { background: #f8f9fa; border: 1px solid #ddd; border-radius: 12px; width: 60px; font-size: 24px; }
 
-        /* 修改後的計算機結帳模組 (非全螢幕) */
-        #checkout-screen { position: fixed; bottom: 0; left: 0; width: 100%; background: #2c3e50; z-index: 2000; display: none; flex-direction: column; padding: 15px; border-radius: 25px 25px 0 0; color: white; box-shadow: 0 -10px 30px rgba(0,0,0,0.3); }
-        .calc-display { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding: 0 10px; }
-        .calc-info { text-align: right; }
-        .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
-        .n-btn { background: #445566; border: none; color: white; font-size: 22px; border-radius: 10px; height: 55px; }
+        /* 計算機結帳面板 */
+        #checkout-screen { position: fixed; bottom: 0; left: 0; width: 100%; background: #2c3e50; z-index: 2000; display: none; flex-direction: column; padding: 20px; border-radius: 25px 25px 0 0; color: white; }
+        .calc-display { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; background: rgba(255,255,255,0.1); padding: 15px; border-radius: 15px; }
+        .num-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+        .n-btn { background: #445566; border: none; color: white; font-size: 24px; border-radius: 12px; height: 60px; font-weight: bold; }
+        .n-btn:active { background: #556677; }
         .n-btn.action { background: var(--s); }
         .n-btn.confirm { background: var(--p); grid-column: span 2; }
 
         /* 管理後台 */
         #admin-screen { position: fixed; inset: 0; background: #fff; z-index: 3000; display: none; overflow-y: auto; padding: 20px; }
-        .admin-stat { background: var(--p); color: white; padding: 20px; border-radius: 15px; text-align: center; margin-bottom: 15px; }
+        .admin-stat { background: var(--p); color: white; padding: 25px; border-radius: 20px; text-align: center; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
+    <!-- 登入介面 -->
     <div id="staff-login">
         <div class="login-card">
-            <h2 style="color:var(--p)">小森檸 POS</h2>
-            <input type="password" id="staff-input" placeholder="代碼" maxlength="4" inputmode="numeric">
-            <button onclick="POS.login()" style="width:100%; padding:15px; border-radius:15px; border:none; background:var(--p); color:white; font-size:18px; font-weight:bold;">登入系統</button>
+            <h2 style="color:var(--p); margin-bottom:10px;">小森檸 POS</h2>
+            <p style="font-size:14px; color:#999;">請輸入員工代碼</p>
+            <input type="password" id="staff-input" placeholder="----" maxlength="4" inputmode="numeric">
+            <button onclick="POS.login()">登入系統</button>
         </div>
     </div>
 
+    <!-- 主畫面 -->
     <div id="pos-screen" style="display:none; flex-direction:column; height:100vh;">
         <header>
-            <b id="user-display">讀取中...</b>
-            <span id="header-rev">今日: $0 / 0杯</span>
+            <span id="user-display">👤 讀取中...</span>
+            <span>小森檸 & 泰奶</span>
         </header>
+        
         <div id="main-grid"></div>
+
         <div class="cart-bar">
             <div class="cart-list" id="cart-ui"></div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                <span style="color:#666">共 <b id="cart-num">0</b> 杯</span>
-                <span style="font-size:28px; font-weight:bold; color:var(--s)">$<span id="cart-total">0</span></span>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+                <span style="color:#666">已選 <b id="cart-num" style="color:#333; font-size:18px;">0</b> 杯</span>
+                <span style="font-size:30px; font-weight:900; color:var(--s)">$<span id="cart-total">0</span></span>
             </div>
             <div class="btn-group">
                 <button class="btn-pay" onclick="POS.openCalc()">結帳找零</button>
@@ -78,26 +83,29 @@
         </div>
     </div>
 
-    <!-- 計算機式結帳介面 -->
+    <!-- 計算機式結帳面板 -->
     <div id="checkout-screen">
-        <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
-            <b style="font-size:18px;">收銀計算機</b>
-            <span onclick="POS.closeCalc()" style="padding:0 10px; font-size:20px;">✕</span>
+        <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
+            <b style="font-size:20px;">收銀找零計算</b>
+            <span onclick="POS.closeCalc()" style="font-size:28px; padding:0 10px;">✕</span>
         </div>
+        
         <div class="calc-display">
-            <div>
-                <p style="font-size:12px; opacity:0.7">應收</p>
-                <h2 style="font-size:24px;">$<span id="calc-need">0</span></h2>
+            <div style="text-align:left;">
+                <p style="font-size:12px; opacity:0.8">應收金額</p>
+                <h2 style="font-size:28px; color:white;">$<span id="calc-need">0</span></h2>
             </div>
-            <div class="calc-info">
-                <p style="font-size:12px; opacity:0.7">實收</p>
-                <h2 id="calc-in" style="font-size:32px; color:var(--p)">0</h2>
-            </div>
-            <div class="calc-info">
-                <p style="font-size:12px; color:var(--s)">找零</p>
-                <h2 id="calc-change" style="font-size:32px; color:var(--s)">0</h2>
+            <div style="text-align:right;">
+                <p style="font-size:12px; opacity:0.8">實收金額</p>
+                <h2 id="calc-in" style="font-size:32px; color:#52c41a;">0</h2>
             </div>
         </div>
+
+        <div style="background:var(--s); padding:10px; border-radius:10px; text-align:center; margin-bottom:20px;">
+            <span style="font-size:16px;">👉 找零金額：</span>
+            <b style="font-size:28px;">$<span id="calc-change">0</span></b>
+        </div>
+
         <div class="num-grid">
             <button class="n-btn" onclick="POS.press('7')">7</button>
             <button class="n-btn" onclick="POS.press('8')">8</button>
@@ -111,7 +119,7 @@
             <button class="n-btn" onclick="POS.press('2')">2</button>
             <button class="n-btn" onclick="POS.press('3')">3</button>
             <button class="n-btn" onclick="POS.press('0')">0</button>
-            <button class="n-btn confirm" onclick="POS.submitPay()">確認結帳並存檔</button>
+            <button class="n-btn confirm" onclick="POS.submitPay()">確認結帳</button>
             <button class="n-btn action" style="grid-column: span 2; background:#555;" onclick="POS.closeCalc()">取消</button>
         </div>
     </div>
@@ -119,23 +127,24 @@
     <!-- 管理後台 -->
     <div id="admin-screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-            <h2>管理後台</h2>
-            <button onclick="document.getElementById('admin-screen').style.display='none'">✕ 關閉</button>
+            <h2 style="color:#333">數據管理中心</h2>
+            <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:10px;">✕ 關閉</button>
         </div>
         <div class="admin-stat">
-            <p>今日累計數據</p>
-            <h1 id="ad-sum" style="font-size:36px; margin:5px 0;">$0</h1>
-            <h3 id="ad-count">總杯數：0 杯</h3>
+            <p style="opacity:0.9">今日累計營業額</p>
+            <h1 id="ad-sum" style="font-size:42px; margin:5px 0;">$0</h1>
+            <h3 id="ad-count" style="font-weight:normal; opacity:0.9;">總銷售：0 杯</h3>
         </div>
-        <div style="background:#f8f9fa; padding:15px; border-radius:12px; margin-bottom:20px;">
-            <h3>品項快速新增</h3>
-            <div style="display:flex; gap:5px; margin-top:10px;">
-                <input type="text" id="ad-n" placeholder="品項名稱" style="flex:2; padding:10px;">
-                <input type="number" id="ad-p" placeholder="價格" style="flex:1; padding:10px;">
-                <button onclick="POS.addItem()" style="background:var(--p); color:white; border:none; padding:0 15px; border-radius:8px;">新增</button>
+        
+        <div style="background:#f8f9fa; padding:15px; border-radius:15px; margin-bottom:20px; border:1px solid #eee;">
+            <h3 style="margin-bottom:12px; font-size:16px;">品項管理</h3>
+            <div style="display:flex; gap:8px;">
+                <input type="text" id="ad-n" placeholder="品項名稱" style="flex:2; padding:12px; border-radius:8px; border:1px solid #ddd;">
+                <input type="number" id="ad-p" placeholder="價格" style="flex:1; padding:12px; border-radius:8px; border:1px solid #ddd;">
+                <button onclick="POS.addItem()" style="background:var(--p); color:white; border:none; padding:0 15px; border-radius:8px; font-weight:bold;">新增</button>
             </div>
         </div>
-        <button onclick="POS.exportCSV()" style="width:100%; padding:15px; background:var(--s); color:white; border:none; border-radius:12px; font-weight:bold;">📊 匯出今日報表 (CSV)</button>
+        <button onclick="POS.exportCSV()" style="width:100%; padding:18px; background:var(--s); color:white; border:none; border-radius:15px; font-weight:bold; font-size:16px;">📊 匯出今日銷售報表 (CSV)</button>
     </div>
 
     <script>
@@ -152,20 +161,26 @@
                 firebase.initializeApp(this.dbCfg);
                 const db = firebase.database();
                 
+                // 員工同步
                 db.ref(`stores/${this.storeID}/staff`).on("value", s => {
-                    this.staff = s.val() || [{name:"老闆", code:"8888"}];
+                    this.staff = s.val() || [{name:"店長", code:"8888"}];
                     if(!s.val()) db.ref(`stores/${this.storeID}/staff`).set(this.staff);
                 });
 
+                // 菜單同步
                 db.ref(`stores/${this.storeID}/inventory`).on("value", s => {
-                    this.inv = s.val() || [{cat:"熱門飲品", items:[{n:"招牌檸檬茶", p:55}]}];
+                    this.inv = s.val() || [{cat:"預設", items:[{n:"招牌檸檬茶", p:55}]}];
                     this.renderGrid();
                 });
 
+                // 營收同步 (僅供後台使用)
                 const today = new Date().toISOString().split('T')[0];
                 db.ref(`stores/${this.storeID}/sales/${today}`).on("value", s => {
                     this.sales = s.val() ? Object.values(s.val()) : [];
-                    this.updateStats();
+                    const sum = this.sales.reduce((a, b) => a + b.p, 0);
+                    const count = this.sales.length;
+                    document.getElementById("ad-sum").innerText = "$" + sum;
+                    document.getElementById("ad-count").innerText = `總銷售：${count} 杯`;
                 });
             },
 
@@ -177,7 +192,7 @@
                     document.getElementById("user-display").innerText = "👤 " + found.name;
                     document.getElementById("staff-login").style.display = "none";
                     document.getElementById("pos-screen").style.display = "flex";
-                } else { alert("代碼錯誤"); }
+                } else { alert("員工代碼不正確"); }
             },
 
             renderGrid() {
@@ -212,19 +227,12 @@
                 ui.scrollLeft = ui.scrollWidth;
             },
 
-            updateStats() {
-                const sum = this.sales.reduce((a, b) => a + b.p, 0);
-                const count = this.sales.length;
-                const txt = `今日: $${sum} / ${count}杯`;
-                document.getElementById("header-rev").innerText = txt;
-                document.getElementById("ad-sum").innerText = "$" + sum;
-                document.getElementById("ad-count").innerText = `總杯數：${count} 杯`;
-            },
-
+            // 結帳邏輯修正
             openCalc() {
-                if(this.cart.length == 0) return;
+                if(this.cart.length === 0) return;
                 this.inStr = "0";
-                this.refreshCalc();
+                document.getElementById("calc-in").innerText = "0";
+                document.getElementById("calc-change").innerText = "0";
                 document.getElementById("calc-need").innerText = document.getElementById("cart-total").innerText;
                 document.getElementById("checkout-screen").style.display = "flex";
             },
@@ -232,14 +240,17 @@
             closeCalc() { document.getElementById("checkout-screen").style.display = "none"; },
 
             press(v) {
-                if(v == 'C') this.inStr = "0";
-                else if(this.inStr == "0") this.inStr = v;
-                else this.inStr += v;
+                if(v === 'C') {
+                    this.inStr = "0";
+                } else {
+                    if(this.inStr === "0") this.inStr = v;
+                    else this.inStr += v;
+                }
                 this.refreshCalc();
             },
 
             refreshCalc() {
-                const need = parseInt(document.getElementById("calc-total").innerText || document.getElementById("cart-total").innerText);
+                const need = parseInt(document.getElementById("calc-need").innerText);
                 const input = parseInt(this.inStr);
                 document.getElementById("calc-in").innerText = this.inStr;
                 const change = input - need;
@@ -247,30 +258,43 @@
             },
 
             submitPay() {
-                const need = parseInt(document.getElementById("cart-total").innerText);
+                const need = parseInt(document.getElementById("calc-need").innerText);
                 const cash = parseInt(this.inStr);
-                if(cash < need) return alert("金額不足！");
+                if(cash < need) {
+                    alert("實收金額不足！");
+                    return;
+                }
                 
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
+                const db = firebase.database();
+                
                 this.cart.forEach(it => {
-                    firebase.database().ref(`stores/${this.storeID}/sales/${today}`).push({
+                    db.ref(`stores/${this.storeID}/sales/${today}`).push({
                         t: time, s: this.user.name, n: it.n, p: it.p
                     });
                 });
+                
+                alert("結帳成功！找零：$" + (cash - need));
                 this.cart = [];
                 this.updateCartUI();
                 this.closeCalc();
             },
 
-            openAdmin() { if(prompt("管理密碼")=="8888") document.getElementById("admin-screen").style.display="block"; },
+            openAdmin() {
+                const pw = prompt("請輸入管理密碼");
+                if(pw === "8888") {
+                    document.getElementById("admin-screen").style.display = "block";
+                }
+            },
 
             addItem() {
                 const n = document.getElementById("ad-n").value, p = parseInt(document.getElementById("ad-p").value);
                 if(n && p) {
                     this.inv[0].items.push({n, p});
                     firebase.database().ref(`stores/${this.storeID}/inventory`).set(this.inv);
-                    document.getElementById("ad-n").value = ""; document.getElementById("ad-p").value = "";
+                    document.getElementById("ad-n").value = ""; 
+                    document.getElementById("ad-p").value = "";
                 }
             },
 
@@ -280,7 +304,7 @@
                 const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `報表.csv`;
+                link.download = `小森檸報表.csv`;
                 link.click();
             }
         };
