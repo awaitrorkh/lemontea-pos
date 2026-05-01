@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>小森檸 POS - 區間報表版</title>
+    <title>小森檸 POS - 店務管理完整版</title>
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -18,7 +18,6 @@
             overflow: hidden; display: flex; flex-direction: column; 
         }
 
-        /* 登入介面 */
         #staff-login { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 20px; }
         .login-card { background: #fff; padding: 30px; border-radius: 20px; width: 100%; max-width: 320px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
         .login-card input { font-size: 28px; text-align: center; letter-spacing: 8px; width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #eee; margin: 20px 0; outline: none; }
@@ -41,7 +40,7 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.02);
         }
         .p-card:active { background: #f0f0f0; transform: scale(0.96); }
-        .p-card b { font-size: 13px; margin-bottom: 3px; color: #333; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .p-card b { font-size: 13px; margin-bottom: 3px; color: #333; }
         .p-card span { color: var(--p); font-weight: bold; font-size: 14px; }
 
         .cart-bar { 
@@ -67,24 +66,26 @@
         .admin-box { background: #f8f9fa; padding: 15px; border-radius: 15px; margin-bottom: 15px; border: 1px solid #eee; }
         .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #eee; }
         .del-btn { background: var(--danger); color: white; border: none; padding: 5px 10px; border-radius: 6px; font-size: 11px; }
-        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin: 4px 0; -webkit-appearance: none; font-size: 14px; }
+        input, select { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #ddd; margin: 4px 0; font-size: 14px; }
     </style>
 </head>
 <body>
 
+    <!-- 員工登入 -->
     <div id="staff-login">
         <div class="login-card">
-            <h2 style="color:var(--p)">小森檸POS</h2>
-            <p style="font-size:12px; color:#999; margin-top:5px;">輸入員工代碼</p>
+            <h2 style="color:var(--p)">小森檸＆泰奶</h2>
+            <p style="font-size:12px; color:#999; margin-top:5px;">輸入員工 4 位數代碼</p>
             <input type="password" id="staff-input" placeholder="••••" maxlength="4" inputmode="numeric">
-            <button onclick="POS.login()" style="width:100%; padding:14px; border-radius:12px; border:none; background:var(--p); color:white; font-size:16px; font-weight:bold;">進入 POS</button>
+            <button onclick="POS.login()" style="width:100%; padding:14px; border-radius:12px; border:none; background:var(--p); color:white; font-size:16px; font-weight:bold;">進入系統</button>
         </div>
     </div>
 
+    <!-- POS 主畫面 -->
     <div id="pos-screen" style="display:none; flex-direction:column; height:100vh;">
         <header>
             <span id="user-display">👤 載入中</span>
-            <span style="font-size:14px;">小森檸POS</span>
+            <span style="font-size:14px;">小森檸＆泰奶</span>
         </header>
         <div id="main-grid"></div>
         <div class="cart-bar">
@@ -101,7 +102,7 @@
         </div>
     </div>
 
-    <!-- 找零彈窗 -->
+    <!-- 結帳計算器 -->
     <div id="checkout-screen">
         <div style="display:flex; justify-content:space-between; align-items:center; color:white;">
             <b style="font-size:18px;">找零計算</b>
@@ -123,48 +124,52 @@
         </div>
     </div>
 
-    <!-- 管理後台 (區間報表優化) -->
+    <!-- 管理後台 -->
     <div id="admin-screen">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
             <h3 style="color:#333;">店鋪營運管理</h3>
             <button onclick="document.getElementById('admin-screen').style.display='none'" style="border:none; background:#eee; padding:8px 15px; border-radius:8px;">✕ 關閉</button>
         </div>
 
-        <!-- 報表查詢與導出 -->
+        <!-- 1. 營業報表 -->
         <div class="admin-box" style="background:var(--p); color:white; text-align:center;">
             <div style="display:flex; gap:8px; margin-bottom:10px;">
-                <div style="flex:1">
-                    <label style="font-size:11px; opacity:0.8;">開始日期</label>
-                    <input type="date" id="date-start" style="margin-top:2px; height:35px;">
-                </div>
-                <div style="flex:1">
-                    <label style="font-size:11px; opacity:0.8;">結束日期</label>
-                    <input type="date" id="date-end" style="margin-top:2px; height:35px;">
-                </div>
+                <input type="date" id="date-start" style="flex:1; height:35px;">
+                <input type="date" id="date-end" style="flex:1; height:35px;">
             </div>
             <button onclick="POS.querySalesRange()" style="width:100%; padding:8px; background:rgba(0,0,0,0.2); color:white; border:none; border-radius:8px; margin-bottom:15px; font-size:13px;">🔍 查詢此區間</button>
-            
             <h1 id="ad-sum" style="font-size:36px;">$0</h1>
-            <p id="ad-count" style="font-size:13px; opacity:0.8;">區間總銷量：0 杯</p>
-            
-            <button onclick="POS.exportCSVRange()" style="width:100%; padding:14px; background:var(--s); color:white; border:none; border-radius:12px; font-weight:bold; margin-top:15px;">📊 導出區間 CSV 報表</button>
+            <p id="ad-count" style="font-size:13px; opacity:0.8;">累計杯數：0 杯</p>
+            <button onclick="POS.exportCSVRange()" style="width:100%; padding:14px; background:var(--s); color:white; border:none; border-radius:12px; font-weight:bold; margin-top:15px;">📊 導出 CSV 報表</button>
         </div>
 
+        <!-- 2. 員工管理 (新增功能) -->
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px;">1. 類別管理</p>
+            <p style="font-weight:bold; margin-bottom:8px;">1. 員工名單管理</p>
             <div style="display:flex; gap:5px; margin-bottom:10px;">
-                <input type="text" id="new-cat" placeholder="類別名">
+                <input type="text" id="new-staff-n" placeholder="姓名" style="flex:1.5">
+                <input type="number" id="new-staff-c" placeholder="4位代碼" maxlength="4" style="flex:1" inputmode="numeric">
+                <button onclick="POS.addStaff()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
+            </div>
+            <div id="admin-staff-list" style="max-height:150px; overflow-y:auto;"></div>
+        </div>
+
+        <!-- 3. 商品類別與品項 -->
+        <div class="admin-box">
+            <p style="font-weight:bold; margin-bottom:8px;">2. 類別管理</p>
+            <div style="display:flex; gap:5px; margin-bottom:10px;">
+                <input type="text" id="new-cat" placeholder="例如：泰奶類">
                 <button onclick="POS.addCat()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
             </div>
             <div id="admin-cat-list"></div>
         </div>
 
         <div class="admin-box">
-            <p style="font-weight:bold; margin-bottom:8px;">2. 品項管理</p>
+            <p style="font-weight:bold; margin-bottom:8px;">3. 品項管理</p>
             <select id="cat-select"><option value="">-- 先選類別 --</option></select>
             <div style="display:flex; gap:5px; margin-top:5px; margin-bottom:10px;">
                 <input type="text" id="new-it-n" placeholder="品名" style="flex:2">
-                <input type="number" id="new-it-p" placeholder="價" style="flex:1">
+                <input type="number" id="new-it-p" placeholder="價格" style="flex:1">
                 <button onclick="POS.addItem()" style="padding:0 15px; background:var(--p); color:white; border:none; border-radius:8px;">新增</button>
             </div>
             <div id="admin-item-list" style="max-height:180px; overflow-y:auto;"></div>
@@ -183,69 +188,81 @@
 
             init() {
                 firebase.initializeApp(this.dbCfg);
-                
-                // 設定日期初始值（預設今天）
                 const today = new Date().toISOString().split('T')[0];
                 document.getElementById('date-start').value = today;
                 document.getElementById('date-end').value = today;
 
+                // 員工監聽
                 firebase.database().ref(`stores/${this.storeID}/staff`).on("value", s => {
                     this.staff = s.val() || [{name:"店長", code:"8888"}];
+                    this.renderStaffList();
                 });
 
+                // 庫存監聽
                 firebase.database().ref(`stores/${this.storeID}/inventory`).on("value", s => {
                     this.inv = s.val() || [];
                     this.renderGrid();
                     this.renderAdminLists();
                 });
 
-                this.querySalesRange(); // 初始加載
+                this.querySalesRange();
             },
 
-            // 核心功能：查詢日期區間
+            // 員工管理功能
+            addStaff() {
+                const n = document.getElementById("new-staff-n").value;
+                const c = document.getElementById("new-staff-c").value;
+                if(n && c.length === 4) {
+                    this.staff.push({ name: n, code: c });
+                    this.saveStaff();
+                    document.getElementById("new-staff-n").value = "";
+                    document.getElementById("new-staff-c").value = "";
+                } else { alert("請輸入正確姓名與4位代碼"); }
+            },
+            delStaff(idx) {
+                if(this.staff.length <= 1) return alert("至少需保留一名員工");
+                if(confirm("確定刪除該員工？")) { this.staff.splice(idx, 1); this.saveStaff(); }
+            },
+            saveStaff() { firebase.database().ref(`stores/${this.storeID}/staff`).set(this.staff); },
+            renderStaffList() {
+                const list = document.getElementById("admin-staff-list");
+                list.innerHTML = "";
+                this.staff.forEach((s, idx) => {
+                    list.innerHTML += `<div class="list-item"><span>${s.name} (${s.code})</span><button class="del-btn" onclick="POS.delStaff(${idx})">刪除</button></div>`;
+                });
+            },
+
+            // 報表功能
             querySalesRange() {
                 const start = document.getElementById('date-start').value;
                 const end = document.getElementById('date-end').value;
-                
-                // 顯示加載中
-                document.getElementById("ad-sum").innerText = "讀取中...";
-
                 firebase.database().ref(`stores/${this.storeID}/sales`).once("value", s => {
                     const allDays = s.val() || {};
                     let rangeSales = [];
-                    
-                    // 遍歷所有日期，篩選出在區間內的
-                    Object.keys(allDays).sort().forEach(dateKey => {
-                        if (dateKey >= start && dateKey <= end) {
-                            const dayData = Object.values(allDays[dateKey]);
-                            dayData.forEach(item => {
-                                rangeSales.push({ ...item, date: dateKey });
-                            });
+                    Object.keys(allDays).sort().forEach(date => {
+                        if (date >= start && date <= end) {
+                            Object.values(allDays[date]).forEach(item => rangeSales.push({ ...item, date }));
                         }
                     });
-
                     this.sales = rangeSales;
                     const sum = this.sales.reduce((a, b) => a + b.p, 0);
                     document.getElementById("ad-sum").innerText = "$" + sum;
-                    document.getElementById("ad-count").innerText = `區間總銷量：${this.sales.length} 杯`;
+                    document.getElementById("ad-count").innerText = `累計杯數：${this.sales.length} 杯`;
                 });
             },
 
             exportCSVRange() {
-                if(this.sales.length === 0) return alert("此區間無數據");
-                const start = document.getElementById('date-start').value;
-                const end = document.getElementById('date-end').value;
-                
-                let csv = "\uFEFF日期,時間,員工,品項,金額\n";
+                if(this.sales.length === 0) return alert("無數據");
+                let csv = "\uFEFF日期,時間,店員,品項,金額\n";
                 this.sales.forEach(s => csv += `${s.date},${s.t},${s.s},${s.n},${s.p}\n`);
-                
                 const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
                 const link = document.createElement("a");
                 link.href = URL.createObjectURL(blob);
-                link.download = `小森檸報表_${start}_至_${end}.csv`;
+                link.download = `報表_${document.getElementById('date-start').value}.csv`;
                 link.click();
             },
 
+            // POS 核心邏輯
             login() {
                 const code = document.getElementById("staff-input").value;
                 const found = this.staff.find(s => s.code == code);
@@ -306,7 +323,6 @@
                 if(v === 'C') this.inStr = "0";
                 else if(this.inStr === "0") this.inStr = v;
                 else this.inStr += v;
-                
                 const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
                 const input = parseInt(this.inStr);
                 document.getElementById("calc-in").innerText = this.inStr;
@@ -316,8 +332,7 @@
 
             submitPay() {
                 const need = parseInt(document.getElementById("calc-need").innerText.replace("$",""));
-                const cash = parseInt(this.inStr);
-                if(cash < need) return alert("金額不足");
+                if(parseInt(this.inStr) < need) return alert("金額不足");
                 const today = new Date().toISOString().split('T')[0];
                 const time = new Date().toLocaleTimeString('zh-TW', {hour12:false});
                 this.cart.forEach(it => {
@@ -327,7 +342,7 @@
                 });
                 alert("結帳成功！");
                 this.cart = []; this.updateCartUI(); this.closeCalc();
-                this.querySalesRange(); // 自動更新後台數據
+                this.querySalesRange();
             },
 
             openAdmin() { if(prompt("管理密碼")==="8888") document.getElementById("admin-screen").style.display="block"; },
